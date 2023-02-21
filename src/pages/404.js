@@ -1,49 +1,102 @@
-import * as React from "react"
+import React from "react"
 import { Link } from "gatsby"
+import styled from 'styled-components'
+import Layout from '/src/components/layout/Layout'
+import Seo from '/src/components/SEO'
+import { getTranslatedText } from "/src/components/translate/TranslateText";
+import CarinaSignature from "/src/components/themes/icons/logo"
 
-const pageStyles = {
-  color: "#232129",
-  padding: "96px",
-  fontFamily: "-apple-system, Roboto, sans-serif, serif",
-}
-const headingStyles = {
-  marginTop: 0,
-  marginBottom: 64,
-  maxWidth: 320,
-}
-
-const paragraphStyles = {
-  marginBottom: 48,
-}
-const codeStyles = {
-  color: "#8A6534",
-  padding: 4,
-  backgroundColor: "#FFF4DB",
-  fontSize: "1.25rem",
-  borderRadius: 4,
-}
-
-const NotFoundPage = () => {
+const NotFoundPage = ({ transitionStatus }) => {
+  const title = getTranslatedText('404.Title')
+  const subtitle = getTranslatedText('404.Subtitle')
+  const linkUrl = "/"
+  const linkText = getTranslatedText('Link.goHome')
+  
   return (
-    <main style={pageStyles}>
-      <h1 style={headingStyles}>Page not found</h1>
-      <p style={paragraphStyles}>
-        Sorry 😔, we couldn’t find what you were looking for.
-        <br />
-        {process.env.NODE_ENV === "development" ? (
-          <>
-            <br />
-            Try creating a page in <code style={codeStyles}>src/pages/</code>.
-            <br />
-          </>
-        ) : null}
-        <br />
-        <Link to="/">Go home</Link>.
-      </p>
-    </main>
+    <Layout pageTitle={title}
+      showFooterIcon={false}>
+      <Seo
+        pageId='404'
+        title={title}
+      />
+      <LayoutContentWrapper>
+
+          <ContentWrapper>
+            <XLink
+              to={linkUrl}
+              title={title}>
+                <StyledIcon>
+                    <CarinaSignature />
+                </StyledIcon>
+            </XLink>
+            {title && 
+              <XLink to={linkUrl}>
+                <StyledH1>{title}</StyledH1>
+              </XLink>}
+            {subtitle && 
+              <XLink to={linkUrl}>
+                <StyledSubtitle>{subtitle}</StyledSubtitle>
+              </XLink>
+            }
+            {linkText &&
+              <XLink to={linkUrl}>
+                <StyledGoHome>{linkText}</StyledGoHome>
+              </XLink>
+            }
+          </ContentWrapper>
+      </LayoutContentWrapper>
+  </Layout>
   )
 }
 
-export default NotFoundPage
+const LayoutContentWrapper = styled.div`
+  max-width: var(--max-content-width);
+  margin:auto;
+  min-height: 100vh;
+  display:flex;
+  justify-content: center;
+`
 
-export const Head = () => <title>Not found</title>
+const ContentWrapper = styled.div`
+  display:flex;
+  min-width: 300px;
+  max-width: 800px;
+  justify-content: space-around;
+  flex-direction: column;
+  text-align:center;
+`
+
+const XLink = styled(Link)`
+    display:inline-block;
+    text-decoration: none;
+
+    color: var(--primary-link-color);
+    transition: color 0.5s ease;
+
+    :hover,
+    :active{
+        color : var(--primary-link-hover-color);
+    }
+`
+
+const StyledIcon = styled(Link)`    
+    font-size:16em;
+    line-height: 1em;
+`
+
+const StyledH1 = styled.h1`
+    margin-top: 0;
+    text-transform:uppercase;
+`
+
+const StyledSubtitle = styled.p`
+    font-style:italic;
+`
+
+const StyledGoHome = styled.div`
+    padding-top: 2rem;
+`
+
+
+
+export default NotFoundPage
