@@ -62,7 +62,8 @@
                 }
              ]}
            >
-              
+              <link rel="canonical" href={metaUrlPage} />
+
               <meta name="copyright" content={author} />
               <meta name="keywords" content={keywordsString} />
 
