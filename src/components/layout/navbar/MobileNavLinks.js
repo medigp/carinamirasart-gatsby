@@ -3,11 +3,11 @@ import { Link } from "gatsby"
 import styled from 'styled-components'
 import Hamburger from 'hamburger-react'
 import { DeviceSize } from "/src/data/responsive"
-import {TranslateText, getTranslatedText} from "../../translate/TranslateText"
-import eventBus from "../../communication/EventBus"
+import {TranslateText, getTranslatedText} from "/src/components/translate/TranslateText"
+import eventBus from "/src/components/communication/EventBus"
 
-import { menuData } from '../../../data/MenuData'
-import SocialMedia from "../SocialMedia"
+import { menuData } from '/src/data/MenuData'
+import SocialMedia from "/src/components/layout/SocialMedia"
 
 const MobileNavLinks = (props) => {
     const {pageTitle, lang} = props;

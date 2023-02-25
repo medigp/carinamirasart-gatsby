@@ -5,6 +5,7 @@ require("dotenv").config({
   path: `.env.${process.env.NODE_ENV}`,
 })
 
+
 module.exports = {
   siteMetadata: {
     title: "Carina Miras.art",
@@ -46,7 +47,42 @@ module.exports = {
       }
     }
     , "gatsby-plugin-image"
-    , "gatsby-plugin-sitemap", {
+    , {
+      resolve : "gatsby-plugin-sitemap",
+      options : {
+        query : `
+          {
+            allSitePage {
+              nodes {
+                  path
+                  pageContext
+              }
+            }
+          }
+          `
+        , serialize: (props) => {
+
+          const { pageContext } = props
+          
+          const getLastModDateString = (ondate) => {
+            if(ondate === undefined)
+              ondate = new Date()
+            return ondate.toISOString().slice(0,10)
+          }
+
+          console.log("allSitePage", props)
+
+          const { lastModificationDate, type, url } = (pageContext || {})
+          return {
+            url: url,
+            changefreq: type === 'Paint' ? 'daily' : 'monthly',
+            priority: 0.7,
+            lastmod : getLastModDateString(lastModificationDate)
+          };
+        }
+      }
+    }
+    , {
       resolve: 'gatsby-plugin-manifest',
       options: {
         "icon": "src/images/icon.png"

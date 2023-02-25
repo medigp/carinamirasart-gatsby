@@ -1,8 +1,8 @@
 import React from "react"
-import Layout from '../components/layout/Layout'
-import Seo from '../components/SEO'
-import Hero from "../components/Hero"
-import { getTranslatedText } from "../components/translate/TranslateText"
+import Layout from '/src/components/layout/Layout'
+import Seo from '/src/components/SEO'
+import Hero from "/src/components/Hero"
+import { getTranslatedText } from "/src/components/translate/TranslateText"
 
 const Home = ({ transitionStatus }) => {
   const lang = null

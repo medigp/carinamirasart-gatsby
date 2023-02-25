@@ -4,7 +4,7 @@ import styled from 'styled-components'
 import Layout from '/src/components/layout/Layout'
 import Seo from '/src/components/SEO'
 import { getTranslatedText } from "/src/components/translate/TranslateText";
-import CarinaSignature from "/src/components/themes/icons/logo"
+import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 
 const NotFoundPage = ({ transitionStatus }) => {
   const title = getTranslatedText('404.Title')

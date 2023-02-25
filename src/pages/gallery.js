@@ -1,11 +1,11 @@
 import React from "react"
 import styled from 'styled-components'
-import Seo from '../components/SEO'
-import Layout from '../components/layout/Layout'
+import Seo from '/src/components/SEO'
+import Layout from '/src/components/layout/Layout'
 import { graphql } from "gatsby"
-import BreadCrumbs from '../components/layout/breadcrumbs/BreadCrumbs'
-import CMGallery from "../components/gallery/CMGallery"
-import { getTranslatedText } from "../components/translate/TranslateText"
+import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
+import CMGallery from "/src/components/gallery/CMGallery"
+import { getTranslatedText } from "/src/components/translate/TranslateText"
 
 const Gallery = ({data}) => {
   

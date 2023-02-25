@@ -3,14 +3,13 @@ import { graphql, Link } from "gatsby"
 import styled from "styled-components"
 import { useMediaQuery } from "react-responsive"
 import { DeviceSize } from "/src/data/responsive"
-import Layout from '../components/layout/Layout'
-import Seo from '../components/SEO'
-import TranslateText from "../components/translate/TranslateText";
-import BreadCrumbs from '../components/layout/breadcrumbs/BreadCrumbs'
-
-import Quote from '../components/layout/quote/Quote'
-import ImageSlider from '../components/layout/slider/ImageSlider'
-import CompositionSchema from "../components/layout/compositionSchema/CompositionSchema";
+import Layout from '/src/components/layout/Layout'
+import Seo from '/src/components/SEO'
+import TranslateText from "/src/components/translate/TranslateText";
+import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
+import Quote from '/src/components/layout/quote/Quote'
+import ImageSlider from '/src/components/layout/slider/ImageSlider'
+import CompositionSchema from "/src/components/layout/compositionSchema/CompositionSchema";
 
 const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
   if(!breadcrumbs || !serie)
@@ -24,7 +23,7 @@ const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
 }
 
 const PaintTemplate = ({data}) => {
-  const {paint} = data
+  const { paint, site } = data
   const { breadcrumbs, title, subtitle, description, body} = paint
   const { sellingData, classification, sizes, quote = {}, image : imageObject = {}} = paint
   const { composition, technique, orientation, serie, style, surface, category, tags } = classification
@@ -120,7 +119,6 @@ const PaintTemplate = ({data}) => {
                     </>
                   }
                   </DefinitionsList>
-
                 </ListWrapper>     
             </RightWrapper>
           </Wrapper>
@@ -136,7 +134,7 @@ const PaintTemplate = ({data}) => {
               sizes={sizes}
             />
           }
-
+          
           {body && 
               <BodyWrapper>
                 <Description dangerouslySetInnerHTML={{__html:body}} />
@@ -308,12 +306,13 @@ const BodyWrapper = styled.div`
 `
 
 export const query = graphql`
-    query PaintTemplate($url: String!) {
-      paint(url: {eq: $url}) {
+    query PaintTemplate($id: String!) {
+      paint(id: {eq: $id}) {
         id
         url
         title
         subtitle
+        date
         seo {
           seoKeywords : keywords
           seoDescription : description
@@ -328,6 +327,7 @@ export const query = graphql`
           url
         }
         description
+        wallLabelDescription
         body
         image {
           image_alt_text
@@ -376,6 +376,20 @@ export const query = graphql`
             height
             width
             breadth
+          }
+        }
+      }
+      site {
+        siteMetadata {
+          title
+          titleTemplate
+          author
+          siteUrl
+          social {
+            mail,
+            instagram,
+            linkedin,
+            facebook
           }
         }
       }

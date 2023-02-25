@@ -3,8 +3,8 @@ import { Link } from "gatsby"
 import styled from 'styled-components'
 import NavLinks from "./NavLinks"
 import MobileNavLinks from "./MobileNavLinks"
-import { getTranslatedText } from "../../translate/TranslateText"
-import CarinaSignature from "/src/components/themes/icons/logo"
+import { getTranslatedText } from "/src/components/translate/TranslateText"
+import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 
 const NavBar = ({pageTitle, showLogo = false, lang}) => {
     

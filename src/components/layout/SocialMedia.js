@@ -1,5 +1,6 @@
 import React from "react"
 import styled from 'styled-components'
+import { graphql, useStaticQuery } from "gatsby"
 import { TranslateText, getTranslatedText } from "../translate/TranslateText"
 import { BsInstagram } from 'react-icons/bs'
 import { FaLinkedinIn, FaFacebookF } from 'react-icons/fa'
@@ -9,11 +10,17 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
     let classname = "socialmedia";
     if(specialClassname)
         classname +=" "+specialClassname;
-    
-    const instaLink = 'https://www.instagram.com/carina.miras.art/'
-    const fbLink = 'https://www.facebook.com/carina.miras.art/'
-    const liLink = 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
-    const mailLink = 'hi@carinamiras.art'
+
+    /*const data = useStaticQuery(query)
+    console.log(data)
+
+    const { social } = data.site.siteMetadata*/
+    const { mail, instagram, linkedin, facebook } = {}
+
+    const instaLink = instagram !== undefined ? instagram : 'https://www.instagram.com/carina.miras.art/'
+    const fbLink = facebook !== undefined ? facebook : 'https://www.facebook.com/carina.miras.art/'
+    const liLink = linkedin !== undefined ? linkedin : 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
+    const mailLink = mail !== undefined ? mail : 'hi@carinamiras.art'
 
     const instagramTitle = getTranslatedText('Contact.instagram.title')
     const facebookTitle = getTranslatedText('Contact.facebook.title')
@@ -72,6 +79,21 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
 }
 
 export default SocialMedia
+/*
+const query = graphql`
+    query data {
+        site {
+            siteMetadata {
+                social {
+                    mail,
+                    instagram,
+                    linkedin,
+                    facebook
+                }
+            }
+        }
+    }
+    `*/
 
 const SocialMediaList = styled.ul`
     position:relative;

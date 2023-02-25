@@ -64,6 +64,22 @@ export const Translation = {
         en : 'Work gallery of Carina Miras',
         es : 'Galería de obras de Carina Miras'
     },
+    /* Gallery */
+    'walllabels' : {
+        ca : 'Cartelleria',
+        en : 'Wall labels',
+        es : 'Cartelas'
+    },
+    'walllabels.title' : {
+        ca : 'Cartelleria',
+        en : 'Wall labels',
+        es : 'Cartelas'
+    },
+    'walllabels.seo.description' : {
+        ca : 'Galeria d\'obres de Carina Miras',
+        en : 'Work gallery of Carina Miras',
+        es : 'Galería de obras de Carina Miras'
+    },
 
     /* About */
     'about.title' : {

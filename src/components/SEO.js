@@ -7,8 +7,8 @@
  import React from 'react'
  import PropTypes from 'prop-types'
  import { useStaticQuery, graphql } from 'gatsby'
- import { getTranslatedText, getExistsTranslation } from './translate/TranslateText'
- //import favicon from '../../src/images/favicon/favicon.ico';
+ import { getTranslatedText, getExistsTranslation } from '/src/components/translate/TranslateText'
+ //import favicon from '/src/images/favicon/favicon.ico';
 
  const getSiteURL = (data) => {
     if(process.env.GATSBY_SITE_URL)
@@ -25,7 +25,7 @@
     return window.location.origin
  }
 
- function Seo({ pageId, description, lang, image, meta, keywords, title, useTitleTemplate = true, pathname, url : pageUrl }) {
+ function Seo({ pageId, description, lang, image, meta, keywords, title, useTitleTemplate = true, pathname, url : pageUrl, follow = true }) {
   const data = useStaticQuery(defaultQuery)
 
   const urlSite = getSiteURL(data)
@@ -43,6 +43,8 @@
   const metaUrlPage = metaUrl + (pageUrl ? pageUrl : '')
   const titleFilled = titleTemplate.replace('%s', title)
 
+  const robotsText = follow ? "index, follow" : "noindex"
+
   const keywordsString = keywords ? keywords.join(`, `) : ''
   return (
     <>
@@ -53,9 +55,13 @@
       <meta name="copyright" content={author} />
       <meta name="keywords" content={keywordsString} />
 
+      <meta name="robots" content={robotsText} />
+
       <meta itemProp="name" content={titleFilled}/>
       <meta itemProp="description" content={metaDescription}/>
       <meta itemProp="image" content={metaImage}/>
+
+
 
       
       <meta property="og:url" content={metaUrlPage} />

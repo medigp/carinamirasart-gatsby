@@ -2,13 +2,13 @@ import React from "react"
 import styled from 'styled-components'
 import SocialMedia from "./SocialMedia"
 import TranslateText from "/src/components/translate/TranslateText"
-import CarinaSignature from "/src/components/themes/icons/logo"
+import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 
 const Footer = ({showIcon = true}) => {
     
     const title = "Carina Miras.art"
     return (
-        <StyledFooter
+      <StyledFooter
             className="general-footer">
             <LayoutContentWrapper>
               {showIcon && 
