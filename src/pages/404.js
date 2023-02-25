@@ -15,10 +15,6 @@ const NotFoundPage = ({ transitionStatus }) => {
   return (
     <Layout pageTitle={title}
       showFooterIcon={false}>
-      <Seo
-        pageId='404'
-        title={title}
-      />
       <LayoutContentWrapper>
 
           <ContentWrapper>
@@ -49,6 +45,17 @@ const NotFoundPage = ({ transitionStatus }) => {
   )
 }
 
+export const Head = ({data, pageContext}) => {
+  const lang = null
+  const title = getTranslatedText('404.Title', lang)
+  return (
+    <Seo 
+      pageId='404'
+      title={title}
+    />
+  )
+}
+
 const LayoutContentWrapper = styled.div`
   max-width: var(--max-content-width);
   margin:auto;
@@ -74,6 +81,7 @@ const XLink = styled(Link)`
     transition: color 0.5s ease;
 
     :hover,
+    :focus,
     :active{
         color : var(--primary-link-hover-color);
     }

@@ -24,6 +24,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             quote : Quote
             description : String
             body: String
+            lastModifiedDate: Date @dateformat
         }
 
         type Serie implements Node & SerieInterface @dontInfer{
@@ -44,6 +45,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             quote : Quote
             description : String
             body: String
+            lastModifiedDate: Date @dateformat
         }
 
         interface PaintInterface implements Node{
@@ -66,6 +68,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             description : String
             body: String
             sellingData : SellingData
+            lastModifiedDate: Date @dateformat
         }
 
         type Paint implements Node & PaintInterface @dontInfer{
@@ -88,6 +91,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             description : String
             body: String
             sellingData : SellingData
+            lastModifiedDate: Date @dateformat
         }
 
         interface PageTextInterface implements Node{
@@ -97,6 +101,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             paragraphs : [ Paragraph ]
             body: String
+            lastModifiedDate: Date @dateformat
         }
 
         type PageText implements Node & PageTextInterface @dontInfer{
@@ -106,6 +111,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             paragraphs : [ Paragraph ]
             body: String
+            lastModifiedDate: Date @dateformat
         }
 
         type Mdx implements Node{
@@ -129,6 +135,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             classification : ClassificationData
             sellingData : SellingData
             paragraphs : [ Paragraph ]
+            lastModifiedDate: Date @dateformat
         }
 
         type Paragraph {
@@ -249,8 +256,8 @@ const calcBreadCrumbElement = (text, urlPath) => {
 exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
     if(node.internal.type !== 'Mdx')
         return;
-
-    const {fileAbsolutePath, parent} = node
+    const { parent } = node
+    const fileAbsolutePath = node.internal.contentFilePath;
     const paintRegEx = new RegExp(/\/content\/paints\//g)
     let isPaint = paintRegEx.test(fileAbsolutePath)
     const serieRegEx = new RegExp(/\/content\/series\//g)
@@ -272,6 +279,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             seo : getSeoObjectByNode(node, null, 'PageText'),
             image : getImageObjectByNode(node),
             paragraphs : paragraphs,
+            lastModifiedDate : getLastModifiedDateByNode(node),
             body : node.body,
             internal : {
                 type : 'PageText',
@@ -307,6 +315,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             subtitle : node.frontmatter.subtitle,
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
+            lastModifiedDate : getLastModifiedDateByNode(node),
             body : node.body,
             parent : node.id,
             internal : {
@@ -359,6 +368,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             description : node.frontmatter.description,
             body : node.body,
             sellingData : getSellingDataByNode(node),
+            lastModifiedDate : getLastModifiedDateByNode(node),
             parent : node.id,
             internal : {
                 type : 'Paint',
@@ -373,6 +383,18 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
 /*
     UTILITATS per les dades en el CreateNodes
 */
+const getLastModifiedDateByNode = (node) => {
+    try{
+        const { lastModifiedDate } = node.frontmatter
+        if(lastModifiedDate instanceof Date)
+            return lastModifiedDate
+    }catch(error){
+        
+    }finally{
+        return new Date()
+    }
+}
+
 const getImageObjectByNode = ( node ) => {
     if(!node)
         return undefined
@@ -616,6 +638,7 @@ const sanitizeUrl = (url) => {
  * CREATE RESOLVERS : definit per poder utilitzar els bodys de Mdx com a html
  */
 exports.createResolvers = ({ createResolvers }) => {
+    console.log("CreateResolvers")
     createResolvers({
         Paint: {
             body: {
@@ -741,7 +764,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
         }
 
         // Create pages for each markdown file.
-        const paintTemplate = path.resolve(`src/templates/paintDetailTemplate.js`)
+        const paintTemplate = path.resolve(`./src/templates/paintDetailTemplate.js`)
         paintQuery.data.allPaint.nodes.forEach( node => {
             const { url, classification, breadcrumbs, hide } = node
 
@@ -770,7 +793,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
     }
     
     if(process.env.GATSBY_CREATE_GALLERY_SERIES){
-        const seriesTemplate = path.resolve(`src/templates/serieGalleryTemplate.js`)
+        const seriesTemplate = path.resolve(`./src/templates/serieGalleryTemplate.js`)
         seriesTypes.forEach( serie => {  
             if(isSerieHidden(allSerie, serie)){
                 console.log("Serie hidden", serie)

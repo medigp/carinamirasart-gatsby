@@ -112,7 +112,8 @@ const SMLink = styled.a`
     }
 
     :hover *,
-    :active *{
+    :active *,
+    :focus *{
         color : var(--primary-link-hover-color);
     }
 `

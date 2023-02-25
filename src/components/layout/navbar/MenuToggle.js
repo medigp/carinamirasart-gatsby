@@ -1,17 +1,18 @@
 import React from "react"
 import styled from 'styled-components'
-import { HamburgerSlider } from 'react-animated-burgers'
+// hamburger-react.netlify.app
+import Hamburger from 'hamburger-react'
 
 
 const MenuToggle = ({toggle, isOpen}) => {
     return (
-        <BurguerIcon toggleButton={toggle} isActive={isOpen}/>
+        <BurguerIcon toggle={toggle} toggled={isOpen}/>
     )
 }
 
 export default MenuToggle
 
-const BurguerIcon = styled(HamburgerSlider)`
+const BurguerIcon = styled(Hamburger)`
     color : var(--primary-link-color);
     padding: 0 0 0 1rem;
     height: 100%;

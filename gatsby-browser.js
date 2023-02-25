@@ -1,4 +1,3 @@
-import 'lazysizes'
 import eventBus from './src/components/communication/EventBus';
 
 export const onInitialClientRender = () => {

@@ -9,13 +9,20 @@ const Home = ({ transitionStatus }) => {
   const title = getTranslatedText("Page.title", lang);
   return (
       <Layout pageTitle={title}>
-        <Seo 
-          pageId='landingPage'
-          title={title}
-          useTitleTemplate={false}
-        />
         <Hero />
       </Layout>
   )
 }
-export default Home;
+export default Home
+
+export const Head = ({data, pageContext}) => {
+  const lang = null
+  const title = getTranslatedText("Page.title", lang);
+  return (
+    <Seo 
+      pageId='landingPage'
+      title={title}
+      useTitleTemplate={false}
+    />
+  )
+}
