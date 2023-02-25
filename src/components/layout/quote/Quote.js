@@ -55,7 +55,6 @@ const QuoteContainer = styled.div`
 `
 
 const QuoteElement = styled.figure`
-    min-width: 300px;
     max-width: 500px;
     font-family: var(--title-font-family);
     font-weight: 400;

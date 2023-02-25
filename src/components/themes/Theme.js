@@ -4,7 +4,7 @@ import { DeviceSize } from "/src/data/responsive"
 const defaultMenuFontFamily =  '"Montserrat", sans-serif'
 const defaultTitleFontFamily = '"Josefin Sans", sans-serif'
 const defaultTextFontFamily = '"Open Sans", sans-serif'
-const defaultLineHeight = '1.5'
+const defaultLineHeight = 2
 
 const defaultPrimaryColor = '#333'
 const defaultSecondaryColor = '#ff7496'
@@ -18,6 +18,8 @@ const maxContentWidth = '1024px';
 const headerHeight = '80px'
 const headerBgColor = 'rgba(255,255,255, 0.8)'
 const footerHeight = '60px'
+const layoutPadding = 2 // rem
+const layoutMobilePadding = 1.5 //rem
 
 export const ThemeStyles = createGlobalStyle`
 
@@ -38,7 +40,14 @@ export const ThemeStyles = createGlobalStyle`
         --primary-link-color : var(--primary-color);
         --primary-link-hover-color : var(--secondary-color);
 
-        --media-minimum-width : ${DeviceSize.minimum}px;
+        --media-layout-mobile-padding : ${layoutMobilePadding}rem;
+        --media-standard-mobile-width : calc(100% - ${layoutMobilePadding * 2}rem); 
+        --media-minimum-mobile-width : calc(${DeviceSize.minimum}px - ${layoutMobilePadding * 2}rem);
+
+        --media-layout-padding : ${layoutPadding}rem;
+        --media-standard-width : calc(100% - ${layoutPadding * 2}rem); 
+        --media-minimum-width : calc(${DeviceSize.minimum}px - ${layoutPadding * 2}rem);
+        
         --media-mobile-width : ${DeviceSize.mobile}px;
         --media-tablet-width : ${DeviceSize.tablet}px;
         --media-laptop-width : ${DeviceSize.laptop}px;
@@ -57,6 +66,10 @@ export const ThemeStyles = createGlobalStyle`
         --mobile-bg-menu-color : var(--secondary-bg-color);
     }
 
+    html html{
+        display:none;
+    }
+
     body {
         background: var(--primary-bg-color);
         color: var(--primary-color);
@@ -71,9 +84,7 @@ export const ThemeStyles = createGlobalStyle`
         footer{
             opacity:1;
             transition: opacity 1s ease;
-            min-width: var(--media-minimum-width);
-
-            
+            min-width: var(--media-minimum-width);            
         }
 
         .loading-block{
@@ -131,14 +142,14 @@ export const ThemeStyles = createGlobalStyle`
     header,
     main,
     footer{
-        width: calc(100% - 3rem);
-        padding-left: 1.5rem;
-        padding-right: 1.5rem;
+        width: var(--media-standard-mobile-width);
+        padding-left: var(--media-layout-mobile-padding);
+        padding-right: var(--media-layout-mobile-padding);
     
         @media ( min-width : ${DeviceSize.mobile}px){
-            width: calc(100% - 4rem);
-            padding-left: 2rem;
-            padding-right: 2rem;        
+            width: var(--media-standard-width);
+            padding-left: var(--media-layout-padding);
+            padding-right: var(--media-layout-padding);       
         }
     }
 

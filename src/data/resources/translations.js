@@ -243,7 +243,21 @@ export const Translation = {
         en : 'Size',
         es : 'Medida'
     },
-
+    'size.height' : {
+        ca : 'Alçada',
+        en : 'Height',
+        es : 'Alto'
+    },
+    'size.width' : {
+        ca : 'Amplada',
+        en : 'Width',
+        es : 'Ancho'
+    },
+    'size.breadth' : {
+        ca : 'Profunditat',
+        en : 'Breadth',
+        es : 'Fondo'
+    },
     'size.cm.mini' : {
         ca : 'cm',
         en : 'cm',
