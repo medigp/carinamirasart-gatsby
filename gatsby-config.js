@@ -142,7 +142,8 @@ module.exports = {
           'Josefin Sans:300,400, 400i, 700',
           'Open Sans:300,400, 400i, 700',
         ],
-        display : 'swap'
+        display : 'swap',
+        crossOrigin : "anonymous"
       }
     },
   ]

@@ -309,6 +309,8 @@ export const query = graphql`
     query PaintTemplate($id: String!) {
       paint(id: {eq: $id}) {
         id
+        pageName
+        reference
         url
         title
         subtitle

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import styled from "styled-components"
 import eventBus from "/src/components/communication/EventBus"
 import WallLabel from "/src/components/layout/wallLabel/WallLabel"
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/ai";
 
 const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, initVisible=false}) => {
     //const data = useStaticQuery(query)
@@ -22,12 +22,16 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
       setSerieVisible(!serieVisible)
     }
 
+    const saveSeriePaintsWallLabelAsImage = () => {
+      eventBus.dispatch("setDownloadSerieWallLabelsPaintsAsImage", {id : serieId})
+    }
+
     return (
       <WallLabelRoot>
         {allowToHide &&
-            <WallLabelSerieTitle
-              onClick={() => toggleVisibleSerie()}>
-              <StyledEyeIcon>
+            <WallLabelSerieTitle>
+              <StyledEyeIcon
+                onClick={() => toggleVisibleSerie()}>
                 {serieVisible && 
                   <AiOutlineEye />
                 }
@@ -35,7 +39,16 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
                   <AiOutlineEyeInvisible />
                 }
               </StyledEyeIcon>
-              {subtitle || title || serieId}
+              <span
+                onClick={() => toggleVisibleSerie()}>
+                {subtitle || title || serieId}
+              </span>
+              {serieVisible && 
+                <StyledSaveIcon
+                    onClick={() => saveSeriePaintsWallLabelAsImage()}>
+                    <AiOutlineSave />
+                </StyledSaveIcon>
+              }
             </WallLabelSerieTitle>
           }
         <WallLabelWrapper
@@ -112,6 +125,10 @@ const WallLabelWrapper = styled.div`
 const StyledEyeIcon = styled.div`
   display:inline-block;
   margin-right: 10px;
+`
+const StyledSaveIcon = styled.div`
+  display:inline-block;
+  float:right;
 `
 const PaintWrapper = styled.div`
   

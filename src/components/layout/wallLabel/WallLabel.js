@@ -1,5 +1,7 @@
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import styled from "styled-components"
+import * as htmlToImage from 'html-to-image';
+import domtoimage from "dom-to-image-more";
 import eventBus from "/src/components/communication/EventBus"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 import Quote from '/src/components/layout/quote/Quote'
@@ -7,7 +9,10 @@ import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 import { BsInstagram } from 'react-icons/bs'
 import { FiMail } from 'react-icons/fi'
 import { TfiWorld } from "react-icons/tfi";
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/ai";
+
+import "typeface-open-sans"
+import "typeface-josefin-sans"
 
 const getSiteURL = (site) => {
   if(process.env.GATSBY_SITE_URL)
@@ -70,11 +75,13 @@ const getDescription = (paint) => {
 
 const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false}) => {
     //const data = useStaticQuery(query)
+    const domEl = useRef(null);
     const [ paintVisible, setPaintVisible ] = useState(initVisible)
+    const [ isDownloading, setIsDownloading ] = useState(false)
     if(!paint || !site)
         return null
 
-    const { breadcrumbs, title, subtitle, description, wallLabelDescription, body, date, id} = paint    
+    const { breadcrumbs, title, subtitle, description, wallLabelDescription, body, date, reference, pageName, id} = paint    
     const { sellingData, classification, sizes, quote = {}} = paint
     const { title : serieTitle, subtitle : serieSubtitle } = (serie || {})
     const { composition, technique, orientation, serie : cSerie, style, surface, category, tags } = classification
@@ -103,16 +110,41 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
         setPaintVisible(show)
     });
 
+    eventBus.on("setDownloadSerieWallLabelsPaintsAsImage", ({id}) => {
+      if(serieId !== id || !paintVisible)
+        return
+        saveWallLabelAsImage()
+    });
+
+
     const toggleVisiblePaint = () => {
       setPaintVisible(!paintVisible)
+    }
+
+    const saveWallLabelAsImage = async() => {
+      if(isDownloading)
+        return 
+      
+      setIsDownloading(true)
+      setPaintVisible(true)
+
+      domtoimage.toPng(domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
+        const link = document.createElement('a');
+        link.download = (reference || pageName || id) + "-wall-label.png";
+        link.href = dataUrl;
+        link.click();
+        setTimeout(function(){
+          setIsDownloading(false)
+        },1000)
+      });
     }
 
     return (
       <WallLabelRoot>
         {allowToHide &&
-            <WallLabelPaintTitle
-              onClick={() => toggleVisiblePaint()}>
-              <StyledEyeIcon>
+            <WallLabelPaintTitle>
+              <StyledEyeIcon
+                onClick={() => toggleVisiblePaint()}>
                 {paintVisible && 
                   <AiOutlineEye />
                 }
@@ -120,12 +152,23 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
                   <AiOutlineEyeInvisible />
                 }
               </StyledEyeIcon>
-              {title}
+              <span
+                onClick={() => toggleVisiblePaint()}>
+                {title}
+              </span>
+              {paintVisible && 
+                <StyledSaveIcon
+                  onClick={() => saveWallLabelAsImage()}>
+                  <AiOutlineSave />
+                </StyledSaveIcon>
+              }
             </WallLabelPaintTitle>
           }
         <WallLabelWrapper
             className={(!allowToHide || paintVisible) ? 'is-visible' : 'is-not-visible'}>
-          <WallLabelContainer>
+          <WallLabelContainer
+            id={domEl}
+            ref={domEl}>
               <ContentBlock>
                 <TitlesBlock>
                   <PaintSubTitleContainer>{serieSubtitle || subtitle}</PaintSubTitleContainer>
@@ -227,6 +270,10 @@ const StyledEyeIcon = styled.div`
   display:inline-block;
   margin-right: 10px;
 `
+const StyledSaveIcon = styled.div`
+  display:inline-block;
+  float:right;
+`
 
 const WallLabelContainer = styled.div`
   display:flex;
@@ -238,12 +285,15 @@ const WallLabelContainer = styled.div`
   
   position: relative;
   border: 1px solid #333;
+  background:white;
+  z-index:0;
   width:100%;
   height: 100%;
   text-align: center;
 
   page-break-inside: avoid;
   break-inside: avoid;
+  
 `
 
 const ContentBlock = styled.div`
