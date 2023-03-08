@@ -300,7 +300,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         //Sense ordenar per series
         const _serie = serie || pageName
         const urlRef = sanitizeUrl(_serie || reference || pageName)
-        const _url = '/gallery/' + urlRef
+        const _url = urlRef
         const _breadcrumbs = calcBreadCrumbs(_serie, null)
         const _classification= getClassificationDataObjectByNode(node)
         actions.createNode({
