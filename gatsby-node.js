@@ -300,7 +300,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         //Sense ordenar per series
         const _serie = serie || pageName
         const urlRef = sanitizeUrl(_serie || reference || pageName)
-        const _url = urlRef
+        const _url = `/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(_serie, null)
         const _classification= getClassificationDataObjectByNode(node)
         actions.createNode({
@@ -351,7 +351,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         /*const _url = process.env.GATSBY_CREATE_GALLERY_SERIES ? 
             '/gallery/' +  serie.toLowerCase() + '/'+ urlRef :    
             '/gallery/' +  urlRef*/
-        const _url = '/item/' + urlRef
+        const _url = `/item/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(serie, _pageName)
         const _classification = getClassificationDataObjectByNode(node)
 

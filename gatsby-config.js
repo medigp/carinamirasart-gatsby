@@ -60,25 +60,41 @@ module.exports = {
             }
           }
           `
+        , excludes : [ 'wall-labels' ]
+        , resolveSiteUrl: () => process.env.GATSBY_SITE_URL
+        , resolvePages : ({allSitePage : { nodes : allPages }}) => {
+          console.log(allPages)
+          return allPages
+        }
         , serialize: (props) => {
 
-          const { pageContext } = props
+          const getUrlOnSiteMap = (path, url) => {
+            if(url)
+              return url
+            return path
+          }
           
           const getLastModDateString = (ondate) => {
-            if(ondate === undefined)
+            if(ondate === undefined || !(ondate instanceof Date))
               ondate = new Date()
             return ondate.toISOString().slice(0,10)
           }
 
-          console.log("allSitePage", props)
-
+          if(!props || !props.pageContext)
+              return null 
+          
+          const { path, pageContext } = props
           const { lastModificationDate, type, url } = (pageContext || {})
+          const changefreq = type === 'Paint' ? 'daily' : 'monthly'
+          const priority = url === undefined ? 1 : 0.7
+          const lastmod = getLastModDateString(lastModificationDate)
+
           return {
-            url: url,
-            changefreq: type === 'Paint' ? 'daily' : 'monthly',
-            priority: 0.7,
-            lastmod : getLastModDateString(lastModificationDate)
-          };
+            url : getUrlOnSiteMap(path, url),
+            changefreq,
+            priority,
+            lastmod
+          }
         }
       }
     }
