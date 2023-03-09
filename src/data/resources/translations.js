@@ -175,9 +175,9 @@ export const Translation = {
         es : 'Twitter',
     },
     'contact.twitter.title' : {
-        ca : '@carina.miras.art | Perfil de Twitter',
-        en : '@carina.miras.art | Twitter profile',
-        es : '@carina.miras.art | Perfil de Twitter',
+        ca : '@cari_miras | Perfil de Twitter',
+        en : '@cari_miras | Twitter profile',
+        es : '@cari_miras | Perfil de Twitter',
     },
     'footer.mail' : {
         ca : 'Correu electrònic',

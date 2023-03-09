@@ -6,7 +6,7 @@
  */
  import React from 'react'
  import PropTypes from 'prop-types'
- import { useStaticQuery, graphql } from 'gatsby'
+ import { useSiteMetadata } from '/src/components/hooks/useSiteMetadata'
  import { getTranslatedText, getExistsTranslation } from '/src/components/translate/TranslateText'
  //import favicon from '/src/images/favicon/favicon.ico';
 
@@ -26,8 +26,8 @@
  }
 
  function Seo({ pageId, description, lang, image, meta, keywords, title, useTitleTemplate = true, pathname, url : pageUrl, follow = true }) {
-  const data = useStaticQuery(defaultQuery)
-
+  
+  const data = useSiteMetadata()
   const urlSite = getSiteURL(data)
   const pageIdDescription = getExistsTranslation(pageId + '.seo.description', lang) ? getTranslatedText(pageId + '.seo.description', lang) : null
   const metaDescription = description || pageIdDescription || data.site.siteMetadata.description
@@ -101,25 +101,3 @@
  }
  
  export default Seo
- 
- export const defaultQuery = graphql`
-   query data {
-     site {
-       siteMetadata {
-         title
-         titleTemplate
-         description
-         author
-         keywords
-         social {
-           mail
-         }
-       }
-     }
-     featuredImage : file(relativePath: {eq: "index-background.jpeg"}){
-      childImageSharp {
-        gatsbyImageData(width: 1200, layout : FIXED)
-      }
-    }
-   }
- `

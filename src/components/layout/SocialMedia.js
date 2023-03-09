@@ -1,8 +1,8 @@
 import React from "react"
 import styled from 'styled-components'
-import { graphql, useStaticQuery } from "gatsby"
+import { useSiteMetadata } from '/src/components/hooks/useSiteMetadata'
 import { TranslateText, getTranslatedText } from "../translate/TranslateText"
-import { BsInstagram } from 'react-icons/bs'
+import { BsInstagram, BsTwitter } from 'react-icons/bs'
 import { FaLinkedinIn, FaFacebookF } from 'react-icons/fa'
 import { FiMail } from 'react-icons/fi'
 
@@ -11,18 +11,19 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
     if(specialClassname)
         classname +=" "+specialClassname;
 
-    /*const data = useStaticQuery(query)
-    console.log(data)
-
-    const { social } = data.site.siteMetadata*/
-    const { mail, instagram, linkedin, facebook } = {}
+    const { site } = useSiteMetadata()
+    const { siteMetadata } = (site || {})
+    const { social } = (siteMetadata || {})
+    const { mail, instagram, linkedin, facebook, twitter } = (social || {})
 
     const instaLink = instagram !== undefined ? instagram : 'https://www.instagram.com/carina.miras.art/'
     const fbLink = facebook !== undefined ? facebook : 'https://www.facebook.com/carina.miras.art/'
     const liLink = linkedin !== undefined ? linkedin : 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
+    const twitterLink = twitter !== undefined ? twitter : 'https://twitter.com/cari_miras'
     const mailLink = mail !== undefined ? mail : 'hi@carinamiras.art'
 
     const instagramTitle = getTranslatedText('Contact.instagram.title')
+    const twitterTitle = getTranslatedText('Contact.twitter.title')
     const facebookTitle = getTranslatedText('Contact.facebook.title')
     const linkedinTitle = getTranslatedText('Contact.linkedin.title')
     const mailTitle = getTranslatedText('Contact.mail.title')
@@ -39,6 +40,17 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
                         <StyledIcon><BsInstagram /></StyledIcon>
                         {showSocialMediaText && <span className='socialmedia-text'><TranslateText text='footer.instagram' /></span>}
                         <PrintDescription>{instaLink}</PrintDescription>
+                    </SMLink>
+                </SocialMediaItem>
+                <SocialMediaItem>
+                    <SMLink
+                        href={twitterLink}
+                        title={twitterTitle}
+                        target="_blank" 
+                    >
+                        <StyledIcon><BsTwitter /></StyledIcon>
+                        {showSocialMediaText && <span className='socialmedia-text'><TranslateText text='footer.twitter' /></span>}
+                        <PrintDescription>{twitterLink}</PrintDescription>
                     </SMLink>
                 </SocialMediaItem>
                 <SocialMediaItem>
@@ -79,21 +91,6 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
 }
 
 export default SocialMedia
-/*
-const query = graphql`
-    query data {
-        site {
-            siteMetadata {
-                social {
-                    mail,
-                    instagram,
-                    linkedin,
-                    facebook
-                }
-            }
-        }
-    }
-    `*/
 
 const SocialMediaList = styled.ul`
     position:relative;

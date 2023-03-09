@@ -20,7 +20,7 @@ module.exports = {
     keywords : ["abstract art", "art"],
     social : {
       mail : "hi@carinamiras.art",
-      twitter : "@carinamiras.art",
+      twitter : "https://twitter.com/cari_miras",
       instagram : 'https://www.instagram.com/carina.miras.art/',
       facebook : 'https://www.facebook.com/carina.miras.art/',
       linkedin : 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
