@@ -1,17 +1,15 @@
 import React from "react"
 import { graphql, Link } from "gatsby"
-import { MDXRenderer } from 'gatsby-plugin-mdx';
 import styled from "styled-components"
 import { useMediaQuery } from "react-responsive"
 import { DeviceSize } from "/src/data/responsive"
-import Layout from '../components/layout/Layout'
-import Seo from '../components/SEO'
-import TranslateText from "../components/translate/TranslateText";
-import BreadCrumbs from '../components/layout/breadcrumbs/BreadCrumbs'
-
-import Quote from '../components/layout/quote/Quote'
-import ImageSlider from '../components/layout/slider/ImageSlider'
-import CompositionSchema from "../components/layout/compositionSchema/CompositionSchema";
+import Layout from '/src/components/layout/Layout'
+import Seo from '/src/components/SEO'
+import TranslateText from "/src/components/translate/TranslateText";
+import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
+import Quote from '/src/components/layout/quote/Quote'
+import ImageSlider from '/src/components/layout/slider/ImageSlider'
+import CompositionSchema from "/src/components/layout/compositionSchema/CompositionSchema";
 
 const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
   if(!breadcrumbs || !serie)
@@ -25,11 +23,9 @@ const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
 }
 
 const PaintTemplate = ({data}) => {
-  const {paint} = data
-  const { breadcrumbs, title, subtitle, description, body, url} = paint
-  const { seo , sellingData, classification, sizes, quote = {}, image : imageObject = {}} = paint
-  const mainImage  = imageObject && imageObject.main && imageObject.main.imageReference && imageObject.main.imageReference.main ? imageObject.main.imageReference.main : {}
-  const { seoKeywords, seoDescription, seoImage = mainImage } = seo
+  const { paint, site } = data
+  const { breadcrumbs, title, subtitle, description, body} = paint
+  const { sellingData, classification, sizes, quote = {}, image : imageObject = {}} = paint
   const { composition, technique, orientation, serie, style, surface, category, tags } = classification
   const { productState, showProductState, priceEur, priceDollar, showPrice } = (sellingData || {})
 
@@ -38,16 +34,8 @@ const PaintTemplate = ({data}) => {
   const showOrientation = false
   const serieUrl = getSerieUrlFromBreadcrumbs(breadcrumbs, serie)
 
-
   return (
       <Layout pageTitle={title}>
-        <Seo 
-          title={title}
-          description={seoDescription}
-          keywords={seoKeywords}
-          image={seoImage}
-          url={url}
-        />
         <LayoutContentWrapper>
           <BreadCrumbs pagesArray={breadcrumbs}
             pageTitle={title} />
@@ -131,7 +119,6 @@ const PaintTemplate = ({data}) => {
                     </>
                   }
                   </DefinitionsList>
-
                 </ListWrapper>     
             </RightWrapper>
           </Wrapper>
@@ -147,11 +134,12 @@ const PaintTemplate = ({data}) => {
               sizes={sizes}
             />
           }
-
+          
           {body && 
-              <MDXWrapper>
-                <MDXRenderer>{body}</MDXRenderer>
-              </MDXWrapper>}
+              <BodyWrapper>
+                <Description dangerouslySetInnerHTML={{__html:body}} />
+              </BodyWrapper>
+          }
           
           {tags && false &&
             <TagsWrapper>
@@ -166,6 +154,24 @@ const PaintTemplate = ({data}) => {
 }
 
 export default PaintTemplate
+
+export const Head = ({data, pageContext}) => {
+  const { paint } = data
+  const { title, url} = paint
+  const { seo, image : imageObject = {}} = paint
+  const mainImage  = imageObject && imageObject.main && imageObject.main.imageReference && imageObject.main.imageReference.main ? imageObject.main.imageReference.main : {}
+  const { seoKeywords, seoDescription, seoImage = mainImage } = seo
+  
+  return (
+    <Seo
+      title={title}
+      description={seoDescription}
+      keywords={seoKeywords}
+      image={seoImage}
+      url={url}
+      />
+  )
+}
 
 const LayoutContentWrapper = styled.section`
   padding-bottom : 2rem;
@@ -295,17 +301,20 @@ const DefinitionsList = styled.dl`
     }
 `
 
-const MDXWrapper = styled.div`
-  padding: 1rem;
+const BodyWrapper = styled.div`
+  padding: 1rem 0;
 `
 
 export const query = graphql`
-    query PaintTemplate($url: String!) {
-      paint(url: {eq: $url}) {
+    query PaintTemplate($id: String!) {
+      paint(id: {eq: $id}) {
         id
+        pageName
+        reference
         url
         title
         subtitle
+        date
         seo {
           seoKeywords : keywords
           seoDescription : description
@@ -320,6 +329,7 @@ export const query = graphql`
           url
         }
         description
+        wallLabelDescription
         body
         image {
           image_alt_text
@@ -368,6 +378,20 @@ export const query = graphql`
             height
             width
             breadth
+          }
+        }
+      }
+      site {
+        siteMetadata {
+          title
+          titleTemplate
+          author
+          siteUrl
+          social {
+            mail,
+            instagram,
+            linkedin,
+            facebook
           }
         }
       }

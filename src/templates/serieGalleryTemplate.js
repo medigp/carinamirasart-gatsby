@@ -1,6 +1,5 @@
 import React from "react"
 import { graphql } from "gatsby"
-import { MDXRenderer } from 'gatsby-plugin-mdx';
 import styled from "styled-components"
 import Layout from '/src/components/layout/Layout'
 import Seo from '/src/components/SEO'
@@ -10,34 +9,21 @@ import CMGallery from "/src/components/gallery/CMGallery"
 import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
 
 const GalleryTemplate = ({data, pageContext}) => {
-  const { serieInfo = {} , allPaint = [], altSeoImages = {}} = data
+  const { serieInfo = {} , allPaint = []} = data
   const { nodes = []} = allPaint
   const { serie : contextSerie , breadcrumbs : contextBreadcrumbs = [] } = pageContext
-  const { title = contextSerie, subtitle, description, seo = {}, breadcrumbs = contextBreadcrumbs} = (serieInfo || {})
+  const { title = contextSerie, subtitle, description, breadcrumbs = contextBreadcrumbs} = (serieInfo || {})
   const { quote = {}, cover = {} } =  (serieInfo || {})
   const { main : coverImage  = {}} = cover
-  const { description : seoDescription, keywords : seoKeywords = [] } = seo
-  let { seoImage = coverImage } = seo
+  
   let { url } = (serieInfo || {})
   if(!url && contextSerie)
     url = '/'+contextSerie.toLowerCase()
-  
-  
-  if(seoImage === null && altSeoImages && altSeoImages.nodes && altSeoImages.nodes[0] && altSeoImages.nodes[0].seoImage && altSeoImages.nodes[0].seoImage.main && altSeoImages.nodes[0].seoImage.main.imageReference){
-    seoImage = altSeoImages.nodes[0].seoImage.main
-  }
-  
+
   const { text : quoteText } = quote
   const showSerieDescription = serieInfo && (description || subtitle || quoteText)
   return (
-        <Layout pageTitle={title}>
-            <Seo 
-              title={title}
-              description={seoDescription}
-              keywords={seoKeywords}
-              image={seoImage}
-              url={url}
-            />
+        <Layout pageTitle={title}>    
             <LayoutContentWrapper>
               <BreadCrumbs pagesArray={breadcrumbs} 
                 pageTitle={title}
@@ -55,13 +41,15 @@ const GalleryTemplate = ({data, pageContext}) => {
                     <Description dangerouslySetInnerHTML={{__html:serieInfo.description}} />
                   }
                   {serieInfo.body && 
-                    <MDXRenderer>{serieInfo.body}</MDXRenderer>
+                    <Description dangerouslySetInnerHTML={{__html:serieInfo.body}} />
                   }
                 </SerieDescriptionWrapper>
               }
               { quote && quote.text && quote.showQuote &&
                   <Quote quote={quote} />
               }
+            </LayoutContentWrapper>
+            <LayoutContentWrapper>
               <CMGallery list={nodes}/>
             </LayoutContentWrapper>
         </Layout>
@@ -86,80 +74,105 @@ const Description = styled.div`
   font-weight: normal;
   color: #555;
 `
+export const Head = ({data, pageContext}) => {
+  const { serieInfo = {}, altSeoImages = {}} = data
+  const { serie : contextSerie } = pageContext
+  const { title = contextSerie, seo = {}} = (serieInfo || {})  
+  const { cover = {} } =  (serieInfo || {})
+  const { main : coverImage  = {}} = cover
+  const { description : seoDescription, keywords : seoKeywords = [] } = seo
+  let { seoImage = coverImage } = seo
+  if(seoImage === null && altSeoImages && altSeoImages.nodes && altSeoImages.nodes[0] && altSeoImages.nodes[0].seoImage && altSeoImages.nodes[0].seoImage.main && altSeoImages.nodes[0].seoImage.main.imageReference){
+    seoImage = altSeoImages.nodes[0].seoImage.main
+  }
+  let { url } = (serieInfo || {})
+  if(!url && contextSerie)
+    url = '/'+contextSerie.toLowerCase()
+
+  return (
+    <Seo
+      title={title}
+      description={seoDescription}
+      keywords={seoKeywords}
+      image={seoImage}
+      url={url}
+      />
+  )
+}
 
 export const query = graphql`
-  query GalleryTemplate($serie: String!) {
-    serieInfo : serie(serie: {eq: $serie}) {
-      id
-      url
-      seo {
-        seoKeywords: keywords
-        seoDescription : description
-        seoImage : image {
-          childImageSharp {
-            gatsbyImageData(width: 1200, layout : FIXED)
-          }
+query GalleryTemplate($serie: String!) {
+  serieInfo: serie(serie: {eq: $serie}) {
+    id
+    url
+    seo {
+      seoKeywords: keywords
+      seoDescription: description
+      seoImage: image {
+        childImageSharp {
+          gatsbyImageData(width: 1200, layout: FIXED)
         }
       }
-      date
+    }
+    date
+    serie
+    classification {
       serie
-      classification {
-        serie
-        style
-        technique
-        composition
-        tags
+      style
+      technique
+      composition
+      tags
+    }
+    title
+    subtitle
+    cover: image {
+      main {
+        childImageSharp {
+          gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
+        }
       }
-      title
-      subtitle
-      cover : image {
+    }
+    description
+    body
+    quote {
+      author
+      text
+      showQuote
+    }
+  }
+  altSeoImages: allPaint(
+    filter: {classification: {serie: {eq: $serie}}}
+    sort: [{date: DESC}, {title: DESC}]
+    limit: 1
+  ) {
+    nodes {
+      id
+      seoImage: image {
         main {
-          childImageSharp {
+          imageReference: childImageSharp {
             gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
           }
         }
-      }
-      description
-      body
-      quote {
-        author
-        text
-        showQuote
+        image_alt_text
       }
     }
-    altSeoImages : allPaint (
-      filter: {classification: {serie: {eq: $serie}}}
-      sort: {order: [DESC, DESC], fields: [date, title]} 
-      limit : 1
-    ) {
-      nodes {
-        id
-        seoImage : image {
-          main {
-            imageReference: childImageSharp {
-              gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
-            }
+  }
+  allPaint(
+    filter: {classification: {serie: {eq: $serie}}, hide: {eq: false}}
+    sort: [{order: DESC}, {date: DESC}, {title: DESC}]
+  ) {
+    nodes {
+      id
+      url
+      title
+      image {
+        main {
+          imageReference: childImageSharp {
+            gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
           }
-          image_alt_text
         }
+        image_alt_text
       }
     }
-    allPaint(
-      filter: {classification: {serie: {eq: $serie}}, hide : {eq : false}}
-      sort: {order: [DESC, DESC, DESC], fields: [order, date, title]}
-    ) {
-      nodes {
-        id
-        url
-        title
-        image {
-          main {
-            imageReference: childImageSharp {
-              gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
-            }
-          }
-          image_alt_text
-        }
-      }
-    }
-  }`
+  }
+}`

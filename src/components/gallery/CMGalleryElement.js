@@ -27,12 +27,13 @@ const ElementContainer = styled(Link)`
 `
 
 const PictureContainer = styled.div`
-    z-index:1
+    z-index:1;
     position:relative;
     transition: all 0.2s ease-in 0.1s;
 
     :hover,
-    :active{
-        transform: scale(1.02)
+    :active,
+    :focus{
+        transform: scale(1.02);
     }
 `

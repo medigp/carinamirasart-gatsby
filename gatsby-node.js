@@ -23,7 +23,9 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            wallLabelDescription : String
             body: String
+            lastModificationDate: Date @dateformat
         }
 
         type Serie implements Node & SerieInterface @dontInfer{
@@ -43,7 +45,9 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            wallLabelDescription : String
             body: String
+            lastModificationDate: Date @dateformat
         }
 
         interface PaintInterface implements Node{
@@ -64,8 +68,10 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            wallLabelDescription : String
             body: String
             sellingData : SellingData
+            lastModificationDate: Date @dateformat
         }
 
         type Paint implements Node & PaintInterface @dontInfer{
@@ -86,8 +92,10 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            wallLabelDescription : String
             body: String
             sellingData : SellingData
+            lastModificationDate: Date @dateformat
         }
 
         interface PageTextInterface implements Node{
@@ -97,6 +105,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             paragraphs : [ Paragraph ]
             body: String
+            lastModificationDate: Date @dateformat
         }
 
         type PageText implements Node & PageTextInterface @dontInfer{
@@ -106,6 +115,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             paragraphs : [ Paragraph ]
             body: String
+            lastModificationDate: Date @dateformat
         }
 
         type Mdx implements Node{
@@ -122,6 +132,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             breadcrumbs : [ BreadCrumb ]
             description : String
+            wallLabelDescription : String
             body: String
             seo : Seo
             quote : Quote
@@ -129,6 +140,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             classification : ClassificationData
             sellingData : SellingData
             paragraphs : [ Paragraph ]
+            lastModificationDate: Date @dateformat
         }
 
         type Paragraph {
@@ -249,8 +261,8 @@ const calcBreadCrumbElement = (text, urlPath) => {
 exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
     if(node.internal.type !== 'Mdx')
         return;
-
-    const {fileAbsolutePath, parent} = node
+    const { parent } = node
+    const fileAbsolutePath = node.internal.contentFilePath;
     const paintRegEx = new RegExp(/\/content\/paints\//g)
     let isPaint = paintRegEx.test(fileAbsolutePath)
     const serieRegEx = new RegExp(/\/content\/series\//g)
@@ -272,6 +284,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             seo : getSeoObjectByNode(node, null, 'PageText'),
             image : getImageObjectByNode(node),
             paragraphs : paragraphs,
+            lastModificationDate : getlastModificationDateByNode(node),
             body : node.body,
             internal : {
                 type : 'PageText',
@@ -279,7 +292,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             }
         })
     }else if(isSerie){
-        //console.log("Serie", fileAbsolutePath)
+        console.log("Serie", fileAbsolutePath)
         //Node de pintures
         const { serie = defaultSerie, pageName, hide = false, reference } = node.frontmatter;
         if(!serie)
@@ -287,7 +300,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         //Sense ordenar per series
         const _serie = serie || pageName
         const urlRef = sanitizeUrl(_serie || reference || pageName)
-        const _url = '/gallery/' + urlRef
+        const _url = `/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(_serie, null)
         const _classification= getClassificationDataObjectByNode(node)
         actions.createNode({
@@ -307,6 +320,8 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             subtitle : node.frontmatter.subtitle,
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
+            wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
+            lastModificationDate : getlastModificationDateByNode(node),
             body : node.body,
             parent : node.id,
             internal : {
@@ -327,7 +342,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         const _reference = (reference || pageName)
         const parentNode = getNode(parent)
         const defaultUrl = (parentNode.relativeDirectory).split('/').pop()
-        console.log("defaultUrl", parentNode.relativeDirectory, defaultUrl)
+        console.log("Paint", parentNode.relativeDirectory, defaultUrl)
         const _pageName = (_reference || defaultUrl)
         const urlRef = sanitizeUrl(url || _pageName)
         //console.log(node.frontmatter.title, urlRef, parentNode.relativeDirectory, defaultUrl)
@@ -336,7 +351,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         /*const _url = process.env.GATSBY_CREATE_GALLERY_SERIES ? 
             '/gallery/' +  serie.toLowerCase() + '/'+ urlRef :    
             '/gallery/' +  urlRef*/
-        const _url = '/item/' + urlRef
+        const _url = `/item/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(serie, _pageName)
         const _classification = getClassificationDataObjectByNode(node)
 
@@ -357,8 +372,10 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             subtitle : node.frontmatter.subtitle,
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
+            wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
             body : node.body,
             sellingData : getSellingDataByNode(node),
+            lastModificationDate : getlastModificationDateByNode(node),
             parent : node.id,
             internal : {
                 type : 'Paint',
@@ -373,6 +390,19 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
 /*
     UTILITATS per les dades en el CreateNodes
 */
+const getlastModificationDateByNode = (node) => {
+    let lastMod = new Date()
+    try{
+        const { lastModificationDate } = node.frontmatter
+        if(lastModificationDate instanceof Date)
+            lastMod = lastModificationDate
+    }catch(error){
+        
+    }finally{
+        return lastMod
+    }
+}
+
 const getImageObjectByNode = ( node ) => {
     if(!node)
         return undefined
@@ -616,6 +646,7 @@ const sanitizeUrl = (url) => {
  * CREATE RESOLVERS : definit per poder utilitzar els bodys de Mdx com a html
  */
 exports.createResolvers = ({ createResolvers }) => {
+    console.log("CreateResolvers")
     createResolvers({
         Paint: {
             body: {
@@ -685,6 +716,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
                     id
                     serie
                     hide
+                    lastModificationDate
                 }
             }
         }
@@ -713,23 +745,65 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
         return false;
     }
 
+    const getLastModificationSerieDate = (serie, nodes, lastModificationPaintSerieDate) => {
+        if(serie === undefined)
+            return null 
+        const paintsDate = lastModificationPaintSerieDate[ serie ]
+        if(nodes !== undefined){
+            for(let i = 0; i < nodes.length; i++){
+                if(nodes[i].serie !== serie)
+                    continue
+                if(paintsDate !== undefined && paintsDate < nodes[i].lastModificationDate )
+                    return paintsDate
+                return nodes[i].lastModificationDate
+            }
+        }
+        return paintsDate
+    }
+
+    const siteQuery = await graphql(`
+            query siteQuery {
+                site {
+                    siteMetadata {
+                        siteUrl
+                    }
+                }
+            }
+            `)
+            
+    const getSiteURL = (data) => {
+        if(process.env.GATSBY_SITE_URL)
+            return process.env.GATSBY_SITE_URL
+        if(data && data.site && data.site.siteMetadata){
+            if(data.site.lastModification)
+            return data.site.lastModification
+            if(data.site.siteMetadata.url)
+            return data.site.siteMetadata.url
+        }
+        return "https://www.carinamiras.art"
+        }
+
+    const siteUrl = getSiteURL(siteQuery)
+
     let seriesTypes = []
+    let oldestModifiedPaintsSerieDate = []
     if(createPaintPages){
         const paintQuery = await graphql(`
             query AllPaints {
                 allPaint {
-                nodes {
-                    id
-                    url
-                    title
-                    breadcrumbs{
-                        url,
-                        text
+                    nodes {
+                        id
+                        url
+                        title
+                        lastModificationDate
+                        breadcrumbs{
+                            url,
+                            text
+                        }
+                        classification {
+                            serie
+                        }
                     }
-                    classification {
-                        serie
-                    }
-                }
                 }
             }
             `)
@@ -741,24 +815,33 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
         }
 
         // Create pages for each markdown file.
-        const paintTemplate = path.resolve(`src/templates/paintDetailTemplate.js`)
+        const paintTemplate = path.resolve(`./src/templates/paintDetailTemplate.js`)
         paintQuery.data.allPaint.nodes.forEach( node => {
-            const { url, classification, breadcrumbs, hide } = node
+            const { id, reference, url, classification, breadcrumbs, hide, lastModificationDate } = node
+            const { serie } = classification
+
+            const serieDate = oldestModifiedPaintsSerieDate[ serie ] 
+            if(serieDate === undefined || serieDate > lastModificationDate)
+                oldestModifiedPaintsSerieDate[ serie ] = lastModificationDate
 
             if(!hide){
-                const { serie } = classification
-
                 if(isSerieHidden(allSerie, serie)){
                     console.log("Paint hidden by serie", serie, url)
                 }else{
                     if(!seriesTypes.includes(serie))
                         seriesTypes.push(serie)
-                    createPage({
+                    
+                        createPage({
                         path : url,
                         component: paintTemplate,
                         context: {
-                            url : url,
-                            breadcrumbs : breadcrumbs
+                            id : id,
+                            url : siteUrl + url,
+                            reference : reference,
+                            breadcrumbs : breadcrumbs,
+                            serie : serie,
+                            type : 'Paint',
+                            lastModificationDate : lastModificationDate
                         },
                     })    
                 }
@@ -770,19 +853,25 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
     }
     
     if(process.env.GATSBY_CREATE_GALLERY_SERIES){
-        const seriesTemplate = path.resolve(`src/templates/serieGalleryTemplate.js`)
+        const seriesTemplate = path.resolve(`./src/templates/serieGalleryTemplate.js`)
         seriesTypes.forEach( serie => {  
             if(isSerieHidden(allSerie, serie)){
                 console.log("Serie hidden", serie)
             }else{
                 const breadcrumbs = calcBreadCrumbs(serie, null)
                 let { url } = breadcrumbs[breadcrumbs.length - 1]
+                const lastModificationDate = getLastModificationSerieDate(serie, seriesQuery.data.allSerie.nodes, oldestModifiedPaintsSerieDate)
+
                 createPage({
                     path : url,
                     component: seriesTemplate,
                     context: {
+                        url : siteUrl + url,
+                        reference : serie, 
                         breadcrumbs : breadcrumbs,
-                        serie : serie
+                        serie : serie,
+                        type: 'Serie',
+                        lastModificationDate : lastModificationDate
                     },
                 })
             }

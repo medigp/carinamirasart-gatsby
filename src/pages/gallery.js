@@ -1,52 +1,15 @@
 import React from "react"
 import styled from 'styled-components'
-import Seo from '../components/SEO'
-import Layout from '../components/layout/Layout'
-import { useStaticQuery, graphql } from "gatsby"
-import BreadCrumbs from '../components/layout/breadcrumbs/BreadCrumbs'
-import CMGallery from "../components/gallery/CMGallery"
-import { getTranslatedText } from "../components/translate/TranslateText"
+import Seo from '/src/components/SEO'
+import Layout from '/src/components/layout/Layout'
+import { graphql } from "gatsby"
+import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
+import CMGallery from "/src/components/gallery/CMGallery"
+import { getTranslatedText } from "/src/components/translate/TranslateText"
 
-const Gallery = ({ transitionStatus }) => {
+const Gallery = ({data}) => {
   
-    const { allPaint, allSerie } = useStaticQuery(
-        graphql`
-          query {
-            allPaint( 
-              sort: {order: [DESC, DESC, DESC], fields: [order, date, title]} 
-            ) {
-              nodes {
-                id
-                url
-                title
-                hide
-                image {
-                  main {
-                    imageReference: childImageSharp {
-                      gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
-                    }
-                  }
-                  image_alt_text
-                }
-                classification {
-                  serie
-                  composition
-                  technique
-                  style
-                  tags
-                }
-              }
-            }
-            allSerie{
-              nodes{
-                id
-                serie
-                hide
-              }
-            }
-          }
-        `
-      )
+    const { allPaint, allSerie } = data
   const { nodes } = allPaint
   const { nodes : series } = allSerie
 
@@ -95,6 +58,58 @@ const Gallery = ({ transitionStatus }) => {
         </Layout>
   )
 }
+
+export const Head = ({data, pageContext}) => {
+  const { pageText = {}, seoImage = {} } = data
+  const { seo = {} } = pageText
+  const {description, keywords} = seo
+  const lang = null
+  const title = getTranslatedText('Gallery.title',lang)
+  return (
+    <Seo
+        pageId='Gallery'
+        title={title}
+        image={seoImage}
+        keywords={keywords}
+        description={description}
+    />
+  )
+}
+
+export const query = graphql`
+query {
+  allPaint(sort: [{order: DESC}, {date: DESC}, {title: DESC}]) {
+    nodes {
+      id
+      url
+      title
+      hide
+      image {
+        main {
+          imageReference: childImageSharp {
+            gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
+          }
+        }
+        image_alt_text
+      }
+      classification {
+        serie
+        composition
+        technique
+        style
+        tags
+      }
+    }
+  }
+  allSerie {
+    nodes {
+      id
+      serie
+      hide
+    }
+  }
+}
+`
 
 const LayoutContentWrapper = styled.div`
   max-width: var(--max-content-width);

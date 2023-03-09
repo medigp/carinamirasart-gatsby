@@ -4,7 +4,7 @@ import { DeviceSize } from "/src/data/responsive"
 const defaultMenuFontFamily =  '"Montserrat", sans-serif'
 const defaultTitleFontFamily = '"Josefin Sans", sans-serif'
 const defaultTextFontFamily = '"Open Sans", sans-serif'
-const defaultLineHeight = '1.5'
+const defaultLineHeight = 2
 
 const defaultPrimaryColor = '#333'
 const defaultSecondaryColor = '#ff7496'
@@ -64,6 +64,10 @@ export const ThemeStyles = createGlobalStyle`
         --footer-bg-color : var(--primary-bg-color);
 
         --mobile-bg-menu-color : var(--secondary-bg-color);
+    }
+
+    html html{
+        display:none;
     }
 
     body {
@@ -145,7 +149,7 @@ export const ThemeStyles = createGlobalStyle`
         @media ( min-width : ${DeviceSize.mobile}px){
             width: var(--media-standard-width);
             padding-left: var(--media-layout-padding);
-            padding-right: var(--media-layout-padding);    
+            padding-right: var(--media-layout-padding);       
         }
     }
 

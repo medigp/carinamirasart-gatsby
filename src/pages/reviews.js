@@ -4,44 +4,15 @@ import { DeviceSize } from "/src/data/responsive"
 import Seo from "/src/components/SEO"
 import Layout from '/src/components/layout/Layout'
 import { getTranslatedText } from "/src/components/translate/TranslateText";
-import { graphql, useStaticQuery } from "gatsby"
+import { graphql } from "gatsby"
 import { GatsbyImage, getImage } from "gatsby-plugin-image"
 import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
 
-const Reviews = ({ transitionStatus }) => {
+const Reviews = ({data}) => {
 
-    const { imageReference = {}, pageText = {}, seoImage = {} } = useStaticQuery(
-        graphql`
-          query {
-            imageReference : file(relativePath: {eq: "reviews.jpg"}){
-              id
-              image : childImageSharp {
-                gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
-              }
-            }
-            seoImage : file(relativePath: {eq: "reviews.jpg"}){
-              childImageSharp {
-                gatsbyImageData(width: 1200, layout: FIXED)
-              }
-            }
-            pageText(reference : {eq:"reviews"}){
-              seo {
-                keywords
-                description
-              }
-              paragraphs {
-                text,
-                author,
-                authorTitle
-              }
-
-            }
-          }
-        `
-      )
+    const { imageReference = {}, pageText = {}} = data
     const {image} = imageReference
-    const { seo = {}, paragraphs = [] } = pageText
-    const {description, keywords} = seo
+    const { paragraphs = [] } = (pageText || {})
 
     const lang = null
     const title = getTranslatedText('Reviews.title', lang)
@@ -91,13 +62,6 @@ const Reviews = ({ transitionStatus }) => {
 
     return (
         <Layout pageTitle={title}>
-            <Seo
-                pageId='Reviews'
-                title={title}
-                image={seoImage}
-                keywords={keywords}
-                description={description}
-            />
             <LayoutContentWrapper>
                 <MessageBlock
                     image={image}
@@ -116,6 +80,51 @@ const Reviews = ({ transitionStatus }) => {
         </Layout>
     )
 }
+
+export const Head = ({data, pageContext}) => {
+  const { pageText = {}, seoImage = {} } = data
+  const { seo = {} } = (pageText || {})
+  const {description, keywords} = (seo || {})
+  const lang = null
+  const title = getTranslatedText('Reviews.title',lang)
+  return (
+    <Seo
+        pageId='Reviews'
+        title={title}
+        image={seoImage}
+        keywords={keywords}
+        description={description}
+    />
+  )
+}
+
+export const query = graphql`
+query {
+  imageReference : file(relativePath: {eq: "reviews.jpg"}){
+    id
+    image : childImageSharp {
+      gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
+    }
+  }
+  seoImage : file(relativePath: {eq: "reviews.jpg"}){
+    childImageSharp {
+      gatsbyImageData(width: 1200, layout: FIXED)
+    }
+  }
+  pageText(reference : {eq:"reviews"}){
+    seo {
+      keywords
+      description
+    }
+    paragraphs {
+      text,
+      author,
+      authorTitle
+    }
+
+  }
+}
+`
 
 const LayoutContentWrapper = styled.div`
   max-width: var(--max-content-width);

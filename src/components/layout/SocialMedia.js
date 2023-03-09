@@ -1,7 +1,8 @@
 import React from "react"
 import styled from 'styled-components'
+import { useSiteMetadata } from '/src/components/hooks/useSiteMetadata'
 import { TranslateText, getTranslatedText } from "../translate/TranslateText"
-import { BsInstagram } from 'react-icons/bs'
+import { BsInstagram, BsTwitter } from 'react-icons/bs'
 import { FaLinkedinIn, FaFacebookF } from 'react-icons/fa'
 import { FiMail } from 'react-icons/fi'
 
@@ -9,13 +10,20 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
     let classname = "socialmedia";
     if(specialClassname)
         classname +=" "+specialClassname;
-    
-    const instaLink = 'https://www.instagram.com/carina.miras.art/'
-    const fbLink = 'https://www.facebook.com/carina.miras.art/'
-    const liLink = 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
-    const mailLink = 'hi@carinamiras.art'
+
+    const { site } = useSiteMetadata()
+    const { siteMetadata } = (site || {})
+    const { social } = (siteMetadata || {})
+    const { mail, instagram, linkedin, facebook, twitter } = (social || {})
+
+    const instaLink = instagram !== undefined ? instagram : 'https://www.instagram.com/carina.miras.art/'
+    const fbLink = facebook !== undefined ? facebook : 'https://www.facebook.com/carina.miras.art/'
+    const liLink = linkedin !== undefined ? linkedin : 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
+    const twitterLink = twitter !== undefined ? twitter : 'https://twitter.com/cari_miras'
+    const mailLink = mail !== undefined ? mail : 'hi@carinamiras.art'
 
     const instagramTitle = getTranslatedText('Contact.instagram.title')
+    const twitterTitle = getTranslatedText('Contact.twitter.title')
     const facebookTitle = getTranslatedText('Contact.facebook.title')
     const linkedinTitle = getTranslatedText('Contact.linkedin.title')
     const mailTitle = getTranslatedText('Contact.mail.title')
@@ -32,6 +40,17 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
                         <StyledIcon><BsInstagram /></StyledIcon>
                         {showSocialMediaText && <span className='socialmedia-text'><TranslateText text='footer.instagram' /></span>}
                         <PrintDescription>{instaLink}</PrintDescription>
+                    </SMLink>
+                </SocialMediaItem>
+                <SocialMediaItem>
+                    <SMLink
+                        href={twitterLink}
+                        title={twitterTitle}
+                        target="_blank" 
+                    >
+                        <StyledIcon><BsTwitter /></StyledIcon>
+                        {showSocialMediaText && <span className='socialmedia-text'><TranslateText text='footer.twitter' /></span>}
+                        <PrintDescription>{twitterLink}</PrintDescription>
                     </SMLink>
                 </SocialMediaItem>
                 <SocialMediaItem>
@@ -112,7 +131,8 @@ const SMLink = styled.a`
     }
 
     :hover *,
-    :active *{
+    :active *,
+    :focus *{
         color : var(--primary-link-hover-color);
     }
 `

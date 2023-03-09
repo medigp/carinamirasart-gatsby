@@ -104,6 +104,7 @@ const TextContainer = styled.div`
         font-size:3em;
         margin-bottom:0;
         padding-bottom:5px;
+        line-height: 1.5;
         transition: color 0.5s ease;
 
         :hover,
@@ -163,6 +164,7 @@ const CLink = styled(Link)`
     transition: color 0.5s ease;
 
     :hover,
+    :focus,
     :active{
         color : var(--primary-link-hover-color);
     }

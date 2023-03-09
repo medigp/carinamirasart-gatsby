@@ -1,21 +1,28 @@
 import React from "react"
-import Layout from '../components/layout/Layout'
-import Seo from '../components/SEO'
-import Hero from "../components/Hero"
-import { getTranslatedText } from "../components/translate/TranslateText"
+import Layout from '/src/components/layout/Layout'
+import Seo from '/src/components/SEO'
+import Hero from "/src/components/Hero"
+import { getTranslatedText } from "/src/components/translate/TranslateText"
 
 const Home = ({ transitionStatus }) => {
   const lang = null
   const title = getTranslatedText("Page.title", lang);
   return (
       <Layout pageTitle={title}>
-        <Seo 
-          pageId='landingPage'
-          title={title}
-          useTitleTemplate={false}
-        />
         <Hero />
       </Layout>
   )
 }
-export default Home;
+export default Home
+
+export const Head = ({data, pageContext}) => {
+  const lang = null
+  const title = getTranslatedText("Page.title", lang);
+  return (
+    <Seo 
+      pageId='landingPage'
+      title={title}
+      useTitleTemplate={false}
+    />
+  )
+}

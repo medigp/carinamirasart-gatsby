@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react"
 import styled from 'styled-components'
 import { Normalize } from "styled-normalize"
-import { ThemeStyles } from "../themes/Theme"
-import Header from './Header'
-import Footer from './Footer'
-import eventBus from "../communication/EventBus"
-import CarinaSignature from "../themes/icons/logo"
+import { ThemeStyles } from "/src/components/themes/Theme"
+import Header from '/src/components/layout/Header'
+import Footer from '/src/components/layout/Footer'
+import eventBus from "/src/components/communication/EventBus"
+import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 
 const loadedClassname = "app-loaded"
 

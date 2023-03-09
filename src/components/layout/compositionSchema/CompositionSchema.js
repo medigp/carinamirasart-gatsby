@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import styled from "styled-components"
 import { DeviceSize } from "/src/data/responsive"
-import { getTranslatedText } from "../../translate/TranslateText";
+import { TranslateText, getTranslatedText } from "../../translate/TranslateText";
 
 const getSizesValues = (sizes, showCmBlock=true) =>{
     let ret = []
@@ -219,6 +219,14 @@ const CompositionSchema = ({sizes, maxHeight = 100, showBreadth = true, alwaysSh
                             </SizeBreadth>
                         </BreadthBlock>
                     }
+                    <SizeDL>
+                        <dt><TranslateText text="Size.height" /></dt>
+                        <dl>{size.h}</dl>
+                        <dt><TranslateText text="Size.width" /></dt>
+                        <dl>{size.w}</dl>
+                        <dt><TranslateText text="Size.breadth" /></dt>
+                        <dl>{size.b}</dl>
+                    </SizeDL>
                 </SizeBlock>
                 ))}
             </SizeDescription>
@@ -231,6 +239,17 @@ export default CompositionSchema
 const CompositionSchemaWrapper = styled.div`
     position:relative;
 `
+
+const SizeDL = styled.dl`
+    position:absolute;
+    z-index:-1;
+    opacity:0;
+    height:100%;
+    width:100%;
+    padding:0;
+    margin:0;
+`
+
 
 const SizeDescription = styled.div`
   text-align: center;

@@ -64,6 +64,22 @@ export const Translation = {
         en : 'Work gallery of Carina Miras',
         es : 'Galería de obras de Carina Miras'
     },
+    /* Gallery */
+    'walllabels' : {
+        ca : 'Cartelleria',
+        en : 'Wall labels',
+        es : 'Cartelas'
+    },
+    'walllabels.title' : {
+        ca : 'Cartelleria',
+        en : 'Wall labels',
+        es : 'Cartelas'
+    },
+    'walllabels.seo.description' : {
+        ca : 'Galeria d\'obres de Carina Miras',
+        en : 'Work gallery of Carina Miras',
+        es : 'Galería de obras de Carina Miras'
+    },
 
     /* About */
     'about.title' : {
@@ -159,9 +175,9 @@ export const Translation = {
         es : 'Twitter',
     },
     'contact.twitter.title' : {
-        ca : '@carina.miras.art | Perfil de Twitter',
-        en : '@carina.miras.art | Twitter profile',
-        es : '@carina.miras.art | Perfil de Twitter',
+        ca : '@cari_miras | Perfil de Twitter',
+        en : '@cari_miras | Twitter profile',
+        es : '@cari_miras | Perfil de Twitter',
     },
     'footer.mail' : {
         ca : 'Correu electrònic',
@@ -243,7 +259,21 @@ export const Translation = {
         en : 'Size',
         es : 'Medida'
     },
-
+    'size.height' : {
+        ca : 'Alçada',
+        en : 'Height',
+        es : 'Alto'
+    },
+    'size.width' : {
+        ca : 'Amplada',
+        en : 'Width',
+        es : 'Ancho'
+    },
+    'size.breadth' : {
+        ca : 'Profunditat',
+        en : 'Breadth',
+        es : 'Fondo'
+    },
     'size.cm.mini' : {
         ca : 'cm',
         en : 'cm',

@@ -371,6 +371,7 @@ const StyledIcon = styled.span`
 
     :hover,
     :active,
+    :focus,
     &.active{
         color : white;
         background : var(--primary-link-hover-color);
@@ -423,6 +424,7 @@ const StyledIcon = styled.span`
 
         :hover,
         :active,
+        :focus,
         &.active{
             font-size:3rem;
             opacity:1;

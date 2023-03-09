@@ -4,7 +4,7 @@ import { DeviceSize } from "/src/data/responsive"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 import { FaQuoteLeft, FaQuoteRight } from 'react-icons/fa'
 
-const Quote = ({quote}) => {
+const Quote = ({quote , showLeftIcon = true, showRightIcon = false}) => {
     if(!quote)
         return null
     let { text, author, authorReference } = quote
@@ -12,8 +12,6 @@ const Quote = ({quote}) => {
       author = getTranslatedText('Quote.author.Unknown')
     if(!text)
         return null
-    const showLeftIcon = true
-    const showRightIcon = false;
     return (
         <QuoteContainer>
             <QuoteElement>

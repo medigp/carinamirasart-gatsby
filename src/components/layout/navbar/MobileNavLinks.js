@@ -1,13 +1,13 @@
 import React, { useState } from "react"
 import { Link } from "gatsby"
 import styled from 'styled-components'
+import Hamburger from 'hamburger-react'
 import { DeviceSize } from "/src/data/responsive"
-import MenuToggle from './MenuToggle'
-import {TranslateText, getTranslatedText} from "../../translate/TranslateText"
-import eventBus from "../../communication/EventBus"
+import {TranslateText, getTranslatedText} from "/src/components/translate/TranslateText"
+import eventBus from "/src/components/communication/EventBus"
 
-import { menuData } from '../../../data/MenuData'
-import SocialMedia from "../SocialMedia"
+import { menuData } from '/src/data/MenuData'
+import SocialMedia from "/src/components/layout/SocialMedia"
 
 const MobileNavLinks = (props) => {
     const {pageTitle, lang} = props;
@@ -16,7 +16,7 @@ const MobileNavLinks = (props) => {
     const classname = isOpen? 'opened-wrapper' : 'closed-wrapper';
 
     const toggleIsOpen = () => {
-        const newValue = !isOpen 
+        const newValue = !isOpen
         setOpen(newValue)
         eventBus.dispatch("toggleShowMainScroll", !newValue)
     }
@@ -24,7 +24,7 @@ const MobileNavLinks = (props) => {
     return (
         <>
         <NavLinksContainer>
-            <MenuToggle isOpen={isOpen} toggle={toggleIsOpen} />
+            <MenuToggle toggled={isOpen} toggle={toggleIsOpen} />
             <LinksWrapper
                 className={classname}>
                 {menuData.map((option, index) => (
@@ -177,6 +177,23 @@ const NavLink = styled(Link)`
     :active,
     :focus{
         color : var(--primary-link-hover-color);
+    }
+`
+
+const MenuToggle = styled(Hamburger)`
+    color : var(--primary-link-color);
+    padding: 0 0 0 1rem;
+    height: 100%;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transform: scale(0.7);
+    transition: all 0.2s ease-in;
+
+    :hover,
+    :active,
+    :focus{
+        color : var(--primary-link-hover-color);
+        transform: scale(1);
     }
 `
 
