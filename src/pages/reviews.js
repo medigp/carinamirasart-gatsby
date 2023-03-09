@@ -83,8 +83,8 @@ const Reviews = ({data}) => {
 
 export const Head = ({data, pageContext}) => {
   const { pageText = {}, seoImage = {} } = data
-  const { seo = {} } = pageText
-  const {description, keywords} = seo
+  const { seo = {} } = (pageText || {})
+  const {description, keywords} = (seo || {})
   const lang = null
   const title = getTranslatedText('Reviews.title',lang)
   return (

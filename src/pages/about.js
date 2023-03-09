@@ -9,8 +9,8 @@ import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
 
 const About = ({data}) => {
     const { imageReference = {}, pageText = {} } = data
-    const {image} = imageReference
-    const { paragraphs = [] } = pageText
+    const {image} = (imageReference || {})
+    const { paragraphs = [] } = (pageText || {})
     
     const lang = null
     const title = getTranslatedText('About.title',lang)
@@ -67,8 +67,8 @@ const About = ({data}) => {
 
 export const Head = ({data, pageContext}) => {
     const { pageText = {}, seoImage = {} } = data
-    const { seo = {} } = pageText
-    const {description, keywords} = seo
+    const { seo = {} } = (pageText || {})
+    const {description, keywords} = (seo || {})
     const lang = null
     const title = getTranslatedText('About.title',lang)
     return (
