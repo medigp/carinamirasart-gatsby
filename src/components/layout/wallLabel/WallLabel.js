@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react"
 import styled from "styled-components"
-import * as htmlToImage from 'html-to-image';
-import domtoimage from "dom-to-image-more";
+//import domtoimage from "dom-to-image-more";
 import eventBus from "/src/components/communication/EventBus"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 import Quote from '/src/components/layout/quote/Quote'
@@ -13,6 +12,12 @@ import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/
 
 import "typeface-open-sans"
 import "typeface-josefin-sans"
+
+const domtoimage = (() => {
+  if (typeof window !== 'undefined') {
+    return require('dom-to-image-more')
+  }
+})
 
 const getSiteURL = (site) => {
   if(process.env.GATSBY_SITE_URL)
@@ -128,15 +133,16 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
       setIsDownloading(true)
       setPaintVisible(true)
 
-      domtoimage.toPng(domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
-        const link = document.createElement('a');
-        link.download = (reference || pageName || id) + "-wall-label.png";
-        link.href = dataUrl;
-        link.click();
-        setTimeout(function(){
-          setIsDownloading(false)
-        },1000)
-      });
+      if(domtoimage !== null)
+        domtoimage.toPng(domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
+          const link = document.createElement('a');
+          link.download = (reference || pageName || id) + "-wall-label.png";
+          link.href = dataUrl;
+          link.click();
+          setTimeout(function(){
+            setIsDownloading(false)
+          },1000)
+        });
     }
 
     return (

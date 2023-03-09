@@ -72,6 +72,7 @@ const WallLabels = ({data}) => {
             <Seo
               pageId='WallLabels'
               title={title}
+              follow={false}
             />
             <LayoutContentWrapper>
               <BreadCrumbs pagesArray={breadcrumbs}/>
