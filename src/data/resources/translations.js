@@ -98,6 +98,12 @@ export const Translation = {
         es : 'Informació de Carina Miras como artista visual'
     },
 
+    /* Chronology */
+    'chronology' : {
+        ca : 'Cronologia',
+        en : 'Cronología',
+        es : 'Chronology'
+    },
     /* Reviews */
     'reviews.title' : {
         ca : 'Ressenyes',

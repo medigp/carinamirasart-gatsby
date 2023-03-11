@@ -93,7 +93,11 @@ const TextContainer = styled.div`
     flex-grow:2;
 
     &.has-image{
-        padding: 1rem;
+        padding: 1rem 0;
+
+        @media ( min-width : ${DeviceSize.mobile}px ){
+            padding: 1rem;
+        }
     }
 
     h1{

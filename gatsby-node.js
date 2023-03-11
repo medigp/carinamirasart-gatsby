@@ -144,6 +144,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         }
 
         type Paragraph {
+            title : String
             text : String!
             image : File @fileByRelativePath
             author : String
