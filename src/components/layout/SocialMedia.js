@@ -100,7 +100,7 @@ const SocialMediaList = styled.ul`
     align-content: center;
     align-items: center;
 	text-align: center;
-    gap: 1rem;
+    gap: 1.5rem;
     list-style: none;
     z-index:1;
 
@@ -130,16 +130,18 @@ const SMLink = styled.a`
         transition: color 0.2s ease;
     }
 
-    :hover *,
-    :active *,
-    :focus *{
+    :hover,
+    :active,
+    :focus{
+        * {
         color : var(--primary-link-hover-color);
+    }
     }
 `
 
 const StyledIcon = styled.span`
     display:inline-block;
-    font-size:0.8em;
+    font-size:1em;
     margin-right:2px;
 `
 
