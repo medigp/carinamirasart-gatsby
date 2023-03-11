@@ -212,11 +212,13 @@ const Paragraph = styled.div`
     }
 
     &::before{
+      top:0;
       left:50%;
     }
 
     &:first-of-type::before{
-      top: 50%; 
+      top: 50%;
+      height: 50%;
     }
 
     &:last-of-type::before{
