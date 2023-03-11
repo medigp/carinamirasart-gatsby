@@ -60,10 +60,10 @@ module.exports = {
             }
           }
           `
-        , excludes : [ 'wall-labels' ]
+        //, excludes : [ 'wall-labels' ]
         , resolveSiteUrl: () => process.env.GATSBY_SITE_URL
         , resolvePages : ({allSitePage : { nodes : allPages }}) => {
-          console.log(allPages)
+          //console.log(allPages)
           return allPages
         }
         , serialize: (props) => {

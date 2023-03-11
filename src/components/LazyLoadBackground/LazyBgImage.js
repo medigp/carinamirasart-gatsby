@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { GatsbyImage, getImage } from "gatsby-plugin-image"
 
 const LazyBgImage = (props) => {
-    console.log(props)
+    //console.log(props)
     const { src, placeholder, alt} = props
     const [imageLoaded, setImageLoaded] = useState(false);
     
