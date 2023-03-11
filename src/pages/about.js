@@ -205,16 +205,10 @@ const Paragraph = styled.div`
   @media ( min-width : ${DeviceSize.mobile}px ){
     grid-template-columns: 1fr 1fr;
     grid-template-areas : "title text";
+    padding: 5rem 0;
 
     &:nth-of-type(2n){
       grid-template-areas : "text title";
-    }
-
-    &::after{
-      display:block;
-      border:0px;
-      background:red;
-      filter: blur(2rem);
     }
 
     &::before{
@@ -248,24 +242,23 @@ const Paragraph = styled.div`
     .p-title h3{
       max-width: 80%;
     }
-
     
     div.p-wrapper p{
       padding:0;
     }
 
     &:hover div.p-wrapper p{
-      transform: translateX(0.5em);
+      transform: translateX(-0.5em);
     }
 
-    &:nth-of-type(2n){     
+    &:nth-of-type(2n){    
       &:hover div.p-wrapper p{
-        transform: translateX(-0.5em);
+        transform: translateX(+0.5em);
       }
     }
 
     h3{
-      opacity:0.15;
+      opacity:0.25;
       font-size:8rem;
       line-height: 8rem;
       vertical-align:top;
