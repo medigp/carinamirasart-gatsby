@@ -23,7 +23,7 @@ const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
 }
 
 const PaintTemplate = ({data}) => {
-  const { paint, site } = data
+  const { paint } = data
   const { breadcrumbs, title, subtitle, description, body} = paint
   const { sellingData, classification, sizes, quote = {}, image : imageObject = {}} = paint
   const { composition, technique, orientation, serie, style, surface, category, tags } = classification
@@ -235,7 +235,7 @@ const SubTitle = styled.h3`
 
 const PaintDescriptionWrapper = styled.div`
   display: block;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0rem;
   disabled-margin: 1rem 0;
   disabled-border-left: 5px solid var(--alternative-color);
 
@@ -312,6 +312,7 @@ export const query = graphql`
         pageName
         reference
         url
+        qrCode
         title
         subtitle
         date

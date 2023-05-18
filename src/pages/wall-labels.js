@@ -1,6 +1,7 @@
-import React from "react"
+import React, { useState } from "react"
 import { graphql } from "gatsby"
 import styled from 'styled-components'
+import { DeviceSize } from "/src/data/responsive"
 import Seo from '/src/components/SEO'
 import Layout from '/src/components/layout/Layout'
 import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
@@ -9,6 +10,7 @@ import WallLabelSerie from "/src/components/layout/wallLabel/WallLabelSerie"
 
 
 const WallLabels = ({data}) => {
+  const [ imageFileType, setImageFileType ] = useState('png')
   const { allPaint, allSerie, site } = data
   const { nodes } = allPaint
   const { nodes : series } = allSerie
@@ -66,6 +68,7 @@ const WallLabels = ({data}) => {
   const filteredSeries = getFilteredSeriesByPaints(nodes, series)
   const seriesAndPaints = getSeriesAndPaints(nodes, filteredSeries)
   const seriesById = getSeriesById(series)
+  const fileTypeLabel = getTranslatedText('File.type')
 
   return (
         <Layout pageTitle={title}>
@@ -77,6 +80,25 @@ const WallLabels = ({data}) => {
             <LayoutContentWrapper>
               <BreadCrumbs pagesArray={breadcrumbs}/>
               <WallLabelsWrapper>
+                <ImageExtensionsWrapper>
+                  <ImageExtensionsList>
+                    <ImageExtensionLabel>
+                        {fileTypeLabel}
+                    </ImageExtensionLabel>
+                    <ImageExtension
+                      onClick={() => { setImageFileType('png')} }
+                      className={imageFileType === 'png' ? 'selected' : ''}
+                    >
+                      PNG
+                    </ImageExtension>
+                    <ImageExtension
+                      onClick={() => { setImageFileType('jpg')} }
+                      className={imageFileType === 'jpg' ? 'selected' : ''}
+                    >
+                      JPG
+                    </ImageExtension>
+                  </ImageExtensionsList>
+                </ImageExtensionsWrapper>
                 {
                 filteredSeries.map((serieId, index) => (
                   <SerieWrapper
@@ -89,6 +111,7 @@ const WallLabels = ({data}) => {
                         site={site}
                         allowToHide={true}
                         initVisible={false}
+                        imageFileType={imageFileType}
                       />
                   </SerieWrapper>
                   ))
@@ -124,6 +147,7 @@ query {
       reference
       pageName
       url
+      qrCode
       title
       subtitle
       date
@@ -189,8 +213,7 @@ query {
   }
 }
 `
-const WallLabelsWrapper = styled.div`
-`
+const WallLabelsWrapper = styled.div``
 const SerieWrapper = styled.div`
 
   &.hide-label{
@@ -198,6 +221,66 @@ const SerieWrapper = styled.div`
       display:block;
     }
   }
+`
+const ImageExtensionsWrapper = styled.div`
+  position:relative;
+  text-align:right;
+`
+const ImageExtensionsList = styled.div`
+  display:inline-block;
+  height:30px;
+  line-height: 30px;
+  overflow: hidden;
+  z-index:10;
+
+  @media print {
+      display:none;
+  }
+
+  @media ( max-width : ${DeviceSize.mobile}px ){
+      position:relative;
+      text-align:right;
+  }
+`
+const ImageExtensionLabel = styled.div`
+  display:inline-block;
+  position:relative;
+  padding: 0 5px;
+  margin-right:10px;
+  font-weight:bold;
+`
+const ImageExtension = styled.div`
+    display:inline-block;
+    position:relative;
+    padding: 0 5px;
+    color: var(--primary-link-color);
+    transition: all 0.2s ease-in;
+    cursor: pointer;
+
+    ::before{
+        position:absolute;
+        display:block;
+        content:'';
+        width:0px;
+        height:3px;
+        bottom:0px;
+        left:0;
+        background:var(--primary-link-hover-color);
+        z-index:2;
+        transition: all 0.2s ease-in 0.1s;
+    }
+
+    :not(.selected):hover{
+        ::before{    
+            z-index:3;
+            width:100%;
+        }
+    }
+
+    &.selected{
+        color : var(--primary-link-hover-color);
+    }
+
 `
 
 const LayoutContentWrapper = styled.div`

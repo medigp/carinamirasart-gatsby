@@ -13,13 +13,13 @@ import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/
 import "typeface-open-sans"
 import "typeface-josefin-sans"
 
-const domtoimage = (() => {
+const getDomToImage = (() => {
   if (typeof window !== 'undefined') {
     return require('dom-to-image-more')
   }
 })
 
-const getSiteURL = (site) => {
+/*const getSiteURL = (site) => {
   if(process.env.GATSBY_SITE_URL)
       return process.env.GATSBY_SITE_URL
   if(site && site.siteMetadata){
@@ -29,7 +29,7 @@ const getSiteURL = (site) => {
       return site.siteMetadata.url
   }
   return "https://www.carinamiras.art"
-}
+}*/
 
 const getSizesText = (sizes, type = 'cm') => {
   if(!sizes)
@@ -78,30 +78,31 @@ const getDescription = (paint) => {
   return txt
 }
 
-const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false}) => {
+const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png', showQRCode = true}) => {
     //const data = useStaticQuery(query)
     const domEl = useRef(null);
+
+    const [ domtoimage, setDomtoimage ] = useState()
     const [ paintVisible, setPaintVisible ] = useState(initVisible)
     const [ isDownloading, setIsDownloading ] = useState(false)
     if(!paint || !site)
         return null
 
-    const { breadcrumbs, title, subtitle, description, wallLabelDescription, body, date, reference, pageName, id} = paint    
-    const { sellingData, classification, sizes, quote = {}} = paint
-    const { title : serieTitle, subtitle : serieSubtitle } = (serie || {})
-    const { composition, technique, orientation, serie : cSerie, style, surface, category, tags } = classification
-    const { productState, showProductState, priceEur, priceDollar, showPrice } = (sellingData || {})
-    const { cm } = (sizes || {})
-    const { height, width , breadth } = (cm || {})
+    const { title, subtitle, date, reference, pageName, id} = paint
+    //const { description, wallLabelDescription, body} = paint
+    const { sellingData, quote = {}, qrCode} = paint
+    //const { classification, sizes } = paint
+    //const { title : serieTitle } = (serie || {})
+    const { subtitle : serieSubtitle } = (serie || {})
+    //const { composition, technique, orientation, serie : cSerie, style, surface, category, tags } = classification
+    const { productState, priceEur, showPrice } = (sellingData || {})
+    //const { showProductState, priceDollar, showPrice } = (sellingData || {})
 
-    const urlSite = getSiteURL(site)
+    //const urlSite = getSiteURL(site)
     const author = site.siteMetadata.author
     //const year = (!date instanceof Date ? new Date() : date).Year()
     const year = date
     const wlDescription = getDescription(paint)
-    
-
-    const social = site.siteMetadata.social
 
     eventBus.on("setVisiblePaint", ({paintId, show}) => {
       if(paintId !== id)
@@ -133,10 +134,32 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
       setIsDownloading(true)
       setPaintVisible(true)
 
-      if(domtoimage !== null)
-        domtoimage.toPng(domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
+      let d2i = domtoimage
+      if(!d2i){
+        d2i = getDomToImage()
+        setDomtoimage(d2i)  
+      }
+
+      if(!d2i)
+        return
+
+      let callFunction = "toPng"
+      let extension = "png"
+      switch(imageFileType){
+        case "jpg":
+          extension = "jpg"
+          callFunction = "toJpeg"
+          break;
+        default:
+          extension = "png"
+          callFunction = "toPng"
+      }
+      if(!d2i[callFunction])
+        return;
+
+      d2i[callFunction](domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
           const link = document.createElement('a');
-          link.download = (reference || pageName || id) + "-wall-label.png";
+          link.download = (reference || pageName || id) + "-wall-label."+extension;
           link.href = dataUrl;
           link.click();
           setTimeout(function(){
@@ -158,10 +181,11 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
                   <AiOutlineEyeInvisible />
                 }
               </StyledEyeIcon>
-              <span
-                onClick={() => toggleVisiblePaint()}>
+              <WallLabelPaintTitleClickable
+                onClick={() => toggleVisiblePaint()}
+                >
                 {title}
-              </span>
+              </WallLabelPaintTitleClickable>
               {paintVisible && 
                 <StyledSaveIcon
                   onClick={() => saveWallLabelAsImage()}>
@@ -177,34 +201,48 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
             ref={domEl}>
               <ContentBlock>
                 <TitlesBlock>
-                  <PaintSubTitleContainer>{serieSubtitle || subtitle}</PaintSubTitleContainer>
-                  <PaintTitleContainer>{title}</PaintTitleContainer>
+                  <TitlesWrapper>
+                    {(serieSubtitle || subtitle) &&
+                      <PaintSubTitleContainer>{serieSubtitle || subtitle}</PaintSubTitleContainer>
+                    }
+                    <PaintTitleContainer
+                    >{title}</PaintTitleContainer>
+                  </TitlesWrapper>
                   <AuthorContainer>{author}</AuthorContainer>
-
-                  <LogoContainer>
-                    <CarinaSignature />
-                  </LogoContainer>
                   {year &&
                     <PaintYearContainer>{year}</PaintYearContainer>
                   }
+
                   {wlDescription &&
                     <PaintDescription dangerouslySetInnerHTML={{__html:wlDescription}} />
                   }
                 </TitlesBlock>
-                
+
                 {quote && quote.text && 
                   <QuoteWrapper
                     className={quote.text.length > 200 ? 'apply-smaller-text' : ''}>
                     <Quote quote={quote} showLeftIcon={true} showRightIcon={true} />
                   </QuoteWrapper>
                 }
-                { productState !== 'Sold' && 
+
+                {showQRCode && qrCode &&
+                  <QRCodeContainer>
+                    <img src={qrCode} alt={title} />
+                  </QRCodeContainer>
+                 }
+
+                
+              </ContentBlock>
+              
+              <LogoContainer className="logo-container">
+                <CarinaSignature />
+              </LogoContainer>
+              
+              { productState !== 'Sold' && showPrice && 
                   <PriceBlock>
                     {priceEur}€
                   </PriceBlock>
-                }
-              </ContentBlock>
-
+              }
               <SocialContainer>
                   <SocialMediaList>
                   <SocialMediaElement>
@@ -272,6 +310,10 @@ const WallLabelPaintTitle = styled.h3`
   }
 `
 
+const WallLabelPaintTitleClickable = styled.a`
+  text-decoration: none;
+`
+
 const StyledEyeIcon = styled.div`
   display:inline-block;
   margin-right: 10px;
@@ -283,9 +325,7 @@ const StyledSaveIcon = styled.div`
 
 const WallLabelContainer = styled.div`
   display:flex;
-  flex-direction: column;
   justify-content:space-between;
-  flex-wrap:nowrap;
   align-content: stretch;
   overflow:hidden;
   
@@ -299,7 +339,6 @@ const WallLabelContainer = styled.div`
 
   page-break-inside: avoid;
   break-inside: avoid;
-  
 `
 
 const ContentBlock = styled.div`
@@ -307,27 +346,46 @@ const ContentBlock = styled.div`
   justify-content:center;
   flex-direction: column;
   flex:1;
-  gap: 1em;
+  justify-content: center;
   z-index:1;
+  padding-top:2rem;
+  padding-bottom: 3rem;
 `
 const TitlesBlock = styled.div`
-
 `
 
 const LogoContainer = styled.div`
-  display:none;
+  position: absolute;
+  font-size: 20rem;
+  top: -12%;
+  right: -17%;
+  opacity: 0.08;
+  line-height: 1rem;
+  z-index:-1;
+  transform:rotate(-10deg)
+`
+
+const QRCodeContainer = styled.div`
+  img{
+    width:100px;
+    height:100px;
+  }
+`
+const TitlesWrapper = styled.div`
+  padding:2em 0 0 0;
 `
 const PaintTitleContainer = styled.h1`
   font-family: var(--title-font-family);
   font-size: 2.5rem;
   font-weight: bold;
-  margin:0;padding:0;
-  line-height: 2rem;
+  margin:0;
+  padding:0;
+  line-height: 3rem;
 `
 const PaintSubTitleContainer = styled.h2`
   font-family: var(--title-font-family);
   margin:0;
-  padding:2em 0 0 0;
+  padding:0;
   font-weight:400;
 `
 
@@ -348,9 +406,11 @@ const PaintYearContainer = styled.h3`
 const PriceBlock = styled.div`
   font-family: var(--title-font-family);
   color:#ccc;
-  font-size: 2em;
-  color:#ccc;
-  display:none;
+  font-size: 2rem;
+  line-height:2rem;
+  position:absolute;
+  bottom:3rem;
+  left:3rem;
 `
 
 const QuoteWrapper = styled.div`
@@ -395,16 +455,23 @@ const QuoteWrapper = styled.div`
 `
 
 const PaintDescription = styled.div`
-  span{
+  span, b{
     display:inline-block;
+    text-overflow:ellipsis;
+    overflow:hidden;
+  }
+  span{
     padding: 0 10px;
   }
 `
 
-const SizesContainer = styled.div`
-`
-
 const SocialContainer = styled.div`
+  position:absolute;
+  bottom:0;
+  width:100%;
+  height: 3rem;
+  line-height: 3rem;
+  vertical-align:middle;
 `
 
 const SocialMediaList = styled.ul`
@@ -418,13 +485,17 @@ const SocialMediaList = styled.ul`
   gap: 1rem;
   list-style: none;
   z-index:1;
+  margin:0;
 `
 const SocialMediaElement = styled.li`
     text-decoration: none;
-    line-height:22px;
-    height:22px;
+    line-height:3rem;
+    height:3rem;
     vertical-align:middle;
     color: gray;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    font-size:0.9rem;
 
     .socialmedia-text{
       color: #333;

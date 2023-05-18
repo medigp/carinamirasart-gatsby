@@ -4,7 +4,7 @@ import eventBus from "/src/components/communication/EventBus"
 import WallLabel from "/src/components/layout/wallLabel/WallLabel"
 import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/ai";
 
-const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, initVisible=false}) => {
+const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png'}) => {
     //const data = useStaticQuery(query)
     const [ serieVisible, setSerieVisible ] = useState(initVisible)
     if(!paints)
@@ -39,10 +39,11 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
                   <AiOutlineEyeInvisible />
                 }
               </StyledEyeIcon>
-              <span
-                onClick={() => toggleVisibleSerie()}>
+              <WallLabelSerieTitleClickable
+                onClick={() => toggleVisibleSerie()}
+                >
                 {subtitle || title || serieId}
-              </span>
+              </WallLabelSerieTitleClickable>
               {serieVisible && 
                 <StyledSaveIcon
                     onClick={() => saveSeriePaintsWallLabelAsImage()}>
@@ -69,6 +70,7 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
                     site={site}
                     allowToHide={allowToHide}
                     initVisible={initVisible}
+                    imageFileType={imageFileType}
                   />
                   </WallLabelContent>
 
@@ -111,6 +113,10 @@ cursor: pointer;
 @media print {
   display:none;
 }
+`
+
+const WallLabelSerieTitleClickable = styled.a`
+  text-decoration: none;
 `
 
 const WallLabelWrapper = styled.div`

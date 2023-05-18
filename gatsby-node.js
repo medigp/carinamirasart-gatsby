@@ -1,4 +1,6 @@
 const path = require("path")
+const get = require("lodash.get")
+const QRCode = require("qrcode")
 
 const defaultSerie = 'Miscellany'
 /**
@@ -9,6 +11,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         interface SerieInterface implements Node{
             id: ID!
             url : String!
+            qrCode: String @createQRCode(fieldName: "url")
             seo : Seo
             hide : Boolean
             reference : String!
@@ -31,6 +34,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         type Serie implements Node & SerieInterface @dontInfer{
             id: ID!
             url : String!
+            qrCode: String @createQRCode(fieldName: "url")
             seo : Seo
             hide : Boolean
             reference : String!
@@ -53,6 +57,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         interface PaintInterface implements Node{
             id: ID!
             url : String!
+            qrCode: String @createQRCode(fieldName: "url")
             seo : Seo
             hide : Boolean
             reference : String!
@@ -77,6 +82,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         type Paint implements Node & PaintInterface @dontInfer{
             id: ID!
             url : String!
+            qrCode: String @createQRCode(fieldName: "url")
             seo : Seo
             hide : Boolean
             reference : String!
@@ -104,6 +110,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             seo : Seo
             image : ImageGroup
             paragraphs : [ Paragraph ]
+            sortParagraphs : SortValues
             body: String
             lastModificationDate: Date @dateformat
         }
@@ -114,6 +121,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             seo : Seo
             image : ImageGroup
             paragraphs : [ Paragraph ]
+            sortParagraphs : SortValues
             body: String
             lastModificationDate: Date @dateformat
         }
@@ -126,6 +134,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             reference : String
             hide : Boolean
             url : String
+            qrCode: String @createQRCode(fieldName: "url")
             date : Date
             order : Int
             productState : ProductStatesEnum
@@ -223,7 +232,24 @@ exports.createSchemaCustomization = ({ actions }) => {
             keywords : [ String ]
             image : File @fileByRelativePath
         }
+
+        type QRCodeImage {
+            url: String!
+            dataUri: String!
+          }
     `)
+
+    actions.createFieldExtension({
+        name: "createQRCode",
+        args: {
+          fieldName: "String!",
+        },
+        extend({ fieldName }) {
+          return {
+            resolve: createQRCode(fieldName),
+          }
+        },
+    })
 }
 
 /**
@@ -259,7 +285,21 @@ const calcBreadCrumbElement = (text, urlPath) => {
     }
 }
 
-exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
+const createQRCode = (fieldName) => async (source) => {
+    
+    const _url = getSiteURL() + source.url 
+    
+    let qrCode = ``
+    try {
+      qrCode = await QRCode.toDataURL(_url, { scale: 6 })
+    } catch (err) {
+      console.error(err)
+    }
+
+    return qrCode
+  }
+
+exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
     if(node.internal.type !== 'Mdx')
         return;
     const { parent } = node
@@ -270,22 +310,24 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
     let isSerie = serieRegEx.test(fileAbsolutePath)
     const pageTextRegEx = new RegExp(/\/content\/pageTexts\//g)
     let isPageText = pageTextRegEx.test(fileAbsolutePath)
-    
 
     if(isPageText){
-        console.log("PageText", fileAbsolutePath)
-        let { paragraphs, reference } = node.frontmatter;
+        let { reference, sortParagraphs } = node.frontmatter;
         if(!reference){
             const patternName = /([\w\d_-]*)\.?[^\\\/]*$/i;
             reference = fileAbsolutePath.match(patternName)[1]
         }
+        if(!sortParagraphs)
+            sortParagraphs = "DESC"
+        //console.log(reference, node)
         actions.createNode({
             id: createNodeId(`PageText-${node.id}`),
             reference : reference,
             seo : getSeoObjectByNode(node, null, 'PageText'),
             image : getImageObjectByNode(node),
-            paragraphs : paragraphs,
-            lastModificationDate : getlastModificationDateByNode(node),
+            paragraphs : getParagraphsObjectByNode(node),
+            sortParagraphs : sortParagraphs,
+            lastModificationDate : getLastModificationDateByNode(node),
             body : node.body,
             internal : {
                 type : 'PageText',
@@ -304,10 +346,12 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         const _url = `/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(_serie, null)
         const _classification= getClassificationDataObjectByNode(node)
+        const _qrCode = ''//await createQRCode(_url)
         actions.createNode({
             id: createNodeId(`Serie-${node.id}`),
             hide : hide,
             url : _url,
+            qrCode: _qrCode,
             pageName : pageName || _serie,
             seo : getSeoObjectByNode(node, _classification, 'Serie'),
             reference : reference || urlRef,
@@ -322,7 +366,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
             wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
-            lastModificationDate : getlastModificationDateByNode(node),
+            lastModificationDate : getLastModificationDateByNode(node),
             body : node.body,
             parent : node.id,
             internal : {
@@ -352,14 +396,22 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
         /*const _url = process.env.GATSBY_CREATE_GALLERY_SERIES ? 
             '/gallery/' +  serie.toLowerCase() + '/'+ urlRef :    
             '/gallery/' +  urlRef*/
-        const _url = `/item/${urlRef}/`
+        const _url = sanitizeUrl(`/item/${urlRef}/`)
         const _breadcrumbs = calcBreadCrumbs(serie, _pageName)
         const _classification = getClassificationDataObjectByNode(node)
+       
+        /*let _qrCode = ''
+        
+        await createQRCode(_url)(function(err, url, data){
+            console.log("Result createQRCode", err, url, data)
+            _qrCode = url
+        })*/
 
         actions.createNode({
             id: createNodeId(`Paint-${node.id}`),
             hide : hide,
-            url : sanitizeUrl(_url),
+            url : _url,
+            //qrCode : _qrCode,
             seo : getSeoObjectByNode(node, _classification, 'Paint'),
             reference : _reference || urlRef,
             order : node.frontmatter.order || 0,
@@ -376,7 +428,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
             wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
             body : node.body,
             sellingData : getSellingDataByNode(node),
-            lastModificationDate : getlastModificationDateByNode(node),
+            lastModificationDate : getLastModificationDateByNode(node),
             parent : node.id,
             internal : {
                 type : 'Paint',
@@ -391,7 +443,7 @@ exports.onCreateNode = ({ node, getNode, actions, createNodeId }) => {
 /*
     UTILITATS per les dades en el CreateNodes
 */
-const getlastModificationDateByNode = (node) => {
+const getLastModificationDateByNode = (node) => {
     let lastMod = new Date()
     try{
         const { lastModificationDate } = node.frontmatter
@@ -604,6 +656,33 @@ const getSeoObjectByNode = (node, classification = {}, type = 'Undefined') => {
     }
 }
 
+const getParagraphsObjectByNode = (node) => {
+    if(!node || !node.frontmatter)
+        return undefined
+    const { paragraphs } = node.frontmatter
+    if(!paragraphs || paragraphs.length === 0)
+        return paragraphs
+    let ps = [];
+    for(let i = 0; i < paragraphs.length; i++){
+        const p = getParagraphObject(paragraphs[i], i)
+        if(p)
+            ps.push(p);
+    }
+    return ps;
+}
+
+const getParagraphObject = (paragraph, index) => {
+    if(!paragraph)
+        return null;
+    let p = paragraph;
+    if(!p.sortText){
+        let indexText = String(index).padStart(4,'0')
+        p.sortText =`sort-${indexText}`
+    }
+        
+    return p   
+}
+
 const getSellingDataByNode = ( node ) => {
     if(!node)
         return undefined
@@ -642,6 +721,18 @@ const sanitizeUrl = (url) => {
     url = url.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     return url.toLowerCase()
 }
+
+const getSiteURL = (data) => {
+    if(process.env.GATSBY_SITE_URL)
+        return process.env.GATSBY_SITE_URL
+    if(data && data.site && data.site.siteMetadata){
+        if(data.site.lastModification)
+        return data.site.lastModification
+        if(data.site.siteMetadata.url)
+        return data.site.siteMetadata.url
+    }
+    return "https://www.carinamiras.art"
+    }
 
 /**
  * CREATE RESOLVERS : definit per poder utilitzar els bodys de Mdx com a html
@@ -771,19 +862,7 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
                 }
             }
             `)
-            
-    const getSiteURL = (data) => {
-        if(process.env.GATSBY_SITE_URL)
-            return process.env.GATSBY_SITE_URL
-        if(data && data.site && data.site.siteMetadata){
-            if(data.site.lastModification)
-            return data.site.lastModification
-            if(data.site.siteMetadata.url)
-            return data.site.siteMetadata.url
-        }
-        return "https://www.carinamiras.art"
-        }
-
+    
     const siteUrl = getSiteURL(siteQuery)
 
     let seriesTypes = []
