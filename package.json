@@ -14,7 +14,10 @@
     "build": "gatsby build",
     "build:develop": "NODE_ENV=production_develop gatsby build",
     "serve": "gatsby serve",
-    "clean": "gatsby clean"
+    "clean": "gatsby clean",
+    "deploy_to_server": "./deploy.sh",
+    "deploy_to_server:test": "./deploy.sh --env test",
+    "deploy_to_server:prod": "./deploy.sh --env prod"
   },
   "dependencies": {
     "@mdx-js/react": "^2.3.0",
