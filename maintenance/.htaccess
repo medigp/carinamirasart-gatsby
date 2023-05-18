@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_URI} !^/maintenance/index\.html$
+RewriteRule ^(.*)$ https://carinamiras.art/maintenance/ [R=307,L]
