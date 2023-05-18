@@ -80,6 +80,11 @@ export const Translation = {
         en : 'Work gallery of Carina Miras',
         es : 'Galería de obras de Carina Miras'
     },
+    'file.type' : {
+        ca : 'Tipus de fitxer',
+        en : 'File type',
+        es : 'Tipo de fichero'
+    },
 
     /* About */
     'about.title' : {
@@ -88,9 +93,9 @@ export const Translation = {
         es : 'Sobre mi'
     },
     'about.subtitle' : {
-        ca : 'Artista abstracte',
-        en : 'Abstract artist',
-        es : 'Artista abstracta'
+        ca : 'Artista visual',
+        en : 'Visual artist',
+        es : 'Artista visual'
     },
     'about.seo.description' : {
         ca : 'Informació sobre Carina Miras com a artista visual',
