@@ -149,12 +149,15 @@ exports.createSchemaCustomization = ({ actions }) => {
             classification : ClassificationData
             sellingData : SellingData
             paragraphs : [ Paragraph ]
+            sortParagraphs : SortValues
             lastModificationDate: Date @dateformat
         }
 
         type Paragraph {
             title : String
+            subtitle : String
             text : String!
+            sortText : String
             image : File @fileByRelativePath
             author : String
             authorTitle : String
@@ -200,6 +203,11 @@ exports.createSchemaCustomization = ({ actions }) => {
             Landscape,
             Square,
             Free
+        }
+
+        enum SortValues {
+            ASC,
+            DESC
         }
 
         type SizesGroup {

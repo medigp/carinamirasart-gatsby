@@ -11,7 +11,7 @@ import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
 const About = ({data}) => {
     const { imageReference = {}, pageText = {} } = data
     const {image} = (imageReference || {})
-    const { paragraphs = [] } = (pageText || {})
+    const { paragraphs = [], sortParagraphs } = (pageText || {})
     
     const lang = null
     const title = getTranslatedText('About.title',lang)
@@ -23,8 +23,7 @@ const About = ({data}) => {
       if(!paragraph)
         return "";
 
-      const {title, text , image} = paragraph
-
+      const {title, subtitle, text , image} = paragraph
       if(!text && !image)
         return "";
 
@@ -37,6 +36,11 @@ const About = ({data}) => {
             <ParagraphH3 
               dangerouslySetInnerHTML={{__html:(title || "Títol")}}
             ></ParagraphH3>
+            {subtitle &&
+              <ParagraphH4
+                dangerouslySetInnerHTML={{__html:(subtitle)}}
+              ></ParagraphH4>
+            }
           </ParagraphTitle>
           <IconElement className='p-icon'></IconElement>
           <ParagraphWrapper className='p-wrapper'>
@@ -68,10 +72,14 @@ const About = ({data}) => {
             </LayoutContentWrapper>
 
             <LayoutTextWrapper>
-                <ChronologyTytle>{chronologyTitle}</ChronologyTytle>
+                <ChronologyTitle>{chronologyTitle}</ChronologyTitle>
                 {paragraphs 
-                  && paragraphs.map((paragraph, index) => 
-                    getParagraph(paragraph, index))
+                  && paragraphs.sort(function(p1,p2){
+                      const ascFactor = (sortParagraphs === 'ASC' ? 1 : -1);
+                      return (p1.sortText < p2.sortText ? -1 : 1) * ascFactor;
+                    }).map((paragraph, index) => 
+                      getParagraph(paragraph, index)
+                    )
                 }
             </LayoutTextWrapper>
         </Layout>
@@ -115,7 +123,9 @@ export const query = graphql`
       }
       paragraphs {
         title
+        subtitle
         text
+        sortText
       }
 
     }
@@ -141,16 +151,28 @@ const Paragraph = styled.div`
   position:relative;
   z-index:0;
 
-  h3{ 
-    color: var(--alternative-color);
+  h3, h4{ 
     transition: all 0.5s ease;
     padding-left: 3rem;
     line-height: 2rem;
     margin:0;
   }
 
+  h3{ 
+    color: var(--alternative-color);
+  }
+
   &:hover h3{
     font-size: 2rem;
+  }
+
+  h4{ 
+    color: var(--primary-color);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  &:hover h4{
+    font-size: 1.2rem;
   }
 
   .p-icon{
@@ -238,17 +260,30 @@ const Paragraph = styled.div`
       align-items: center; 
       justify-content: center;
       text-align:center;
+      flex-direction:column;
+    }
+
+    .p-title{
+      flex-direction:columnreverse;
     }
 
     .p-wrapper p,
-    .p-title h3{
+    .p-title h3,
+    .p-title h4{
       max-width: 80%;
     }
     
     div.p-wrapper p{
       padding:0;
+      text-align:left;
     }
 
+    &:nth-of-type(2n){
+      div.p-wrapper p{
+        text-align:right;
+      }
+    }
+    
     &:hover div.p-wrapper p{
       transform: translateX(-0.5em);
     }
@@ -273,11 +308,15 @@ const Paragraph = styled.div`
       font-size:8rem;
       transform:scale(1.2);
     }
+    h4{
+      margin:0;
+      padding: 0;
+    }
   }
 
 `
 
-const ChronologyTytle = styled.h2`
+const ChronologyTitle = styled.h2`
   @media ( min-width : ${DeviceSize.mobile}px ){
     text-align: center;
   }
@@ -288,6 +327,10 @@ const ParagraphTitle = styled.div`
   xx-overflow:hidden;
 `
 const ParagraphH3 = styled.h3`
+`
+
+const ParagraphH4 = styled.h4`
+  margin:0;
 `
 
 const ParagraphWrapper = styled.div`
