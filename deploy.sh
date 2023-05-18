@@ -28,7 +28,7 @@ fi
 Help()
 {
   echo "Arguments:"
-  echo "  --subdomain        Definir el subdomini (admin, test, develop...)"
+  echo "  --env               Definir l'environment (producció, test, develop, admin...)"
   echo "  --no-build          Evita fer el build en local de gatsby"
   echo "  --no-clean          Evita fer el clean en local del codi"
   echo "  --no-clean-server   Evita fer el build de gatsby"
@@ -100,13 +100,14 @@ else
   fi 
 fi
 
-# Últimes execucions (en segons): 3801
-CLEAN_AVG_TIME=4
-BUILD_AVG_TIME=650
-UPLOAD_AVG_TIME=1200
-CLEAN_SERVER_AVG_TIME=600
-FILES_TO_REAL_AVG_TIME=350
-DELETE_TEMP_FILES_AVG_TIME=250
+# Últimes execucions (en segons): 1509
+
+CLEAN_AVG_TIME=4                  # 5
+BUILD_AVG_TIME=700                # 693
+UPLOAD_AVG_TIME=900               # 807
+CLEAN_SERVER_AVG_TIME=1           # 
+FILES_TO_REAL_AVG_TIME=1          # 
+DELETE_TEMP_FILES_AVG_TIME=2      # 4
 
 #clean
 [ $CLEAN == "S" ] && EXPECTED_TIME=$(( $EXPECTED_TIME + $CLEAN_AVG_TIME ))
