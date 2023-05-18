@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+IP="172.0.0.1"
+PORT="8080"
+USERNAME="root"
+
+DEFINED_SUBDOMAINS=("test" "admin")
+
+SERVER_PATH="host_domain/public_html"
+TEMP_FOLDER=".temp"
+
+WINDOWS_PATH="C:/projects/project-name"
+LOCAL_PATH="public"
+
+LOGFILE="deploy_example.txt"

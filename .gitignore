@@ -7,3 +7,5 @@ node_modules/
 .env.production_develop
 public
 content
+configuration.sh
+deploy_log.txt
