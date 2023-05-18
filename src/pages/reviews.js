@@ -7,8 +7,10 @@ import { getTranslatedText } from "/src/components/translate/TranslateText";
 import { graphql } from "gatsby"
 import { GatsbyImage, getImage } from "gatsby-plugin-image"
 import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
+import useIsClient from "/src/components/hooks/useIsClient"
 
 const Reviews = ({data}) => {
+    const { isClient } = useIsClient();
 
     const { imageReference = {}, pageText = {}} = data
     const {image} = imageReference
@@ -60,6 +62,7 @@ const Reviews = ({data}) => {
 
     }
 
+    if( !isClient ) return null
     return (
         <Layout pageTitle={title}>
             <LayoutContentWrapper>

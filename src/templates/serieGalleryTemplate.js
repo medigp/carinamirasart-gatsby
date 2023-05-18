@@ -7,6 +7,7 @@ import BreadCrumbs from '/src/components/layout/breadcrumbs/BreadCrumbs'
 import Quote from '/src/components/layout/quote/Quote'
 import CMGallery from "/src/components/gallery/CMGallery"
 import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
+import useIsClient from "/src/components/hooks/useIsClient"
 
 const GalleryTemplate = ({data, pageContext}) => {
   const { serieInfo = {} , allPaint = []} = data
@@ -22,6 +23,9 @@ const GalleryTemplate = ({data, pageContext}) => {
 
   const { text : quoteText } = quote
   const showSerieDescription = serieInfo && (description || subtitle || quoteText)
+
+  const { isClient } = useIsClient();
+  if(!isClient) return null
   return (
         <Layout pageTitle={title}>    
             <LayoutContentWrapper>
