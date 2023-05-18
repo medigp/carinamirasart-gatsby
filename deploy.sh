@@ -28,7 +28,7 @@ fi
 Help()
 {
   echo "Arguments:"
-  echo "  --subdomain        Definir el subdomini (admin, test, develop...)"
+  echo "  --env               Definir l'environment (producció, test, develop, admin...)"
   echo "  --no-build          Evita fer el build en local de gatsby"
   echo "  --no-clean          Evita fer el clean en local del codi"
   echo "  --no-clean-server   Evita fer el build de gatsby"
