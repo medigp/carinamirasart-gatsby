@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import styled from "styled-components"
 //import domtoimage from "dom-to-image-more";
 import eventBus from "/src/components/communication/EventBus"
@@ -15,7 +15,8 @@ import "typeface-josefin-sans"
 
 const getDomToImage = (() => {
   if (typeof window !== 'undefined') {
-    return require('dom-to-image-more')
+    //return require('dom-to-image-more')
+    return require('html-to-image')
   }
 })
 
@@ -48,8 +49,29 @@ const getSizesText = (sizes, type = 'cm') => {
   }
   return txt
 }
-const getDescription = (paint) => {
-  const { classification, sizes } = paint
+
+const getTitle = (paint, serie) => {
+  const { title, wallLabel } = (paint || {})
+  const { title : serieTitle, wallLabel : serieWallLabel } = (serie || {})
+  const { title : paintWL } = (wallLabel || {})
+  const { title : serieWL } = (serieWallLabel || {})
+  return paintWL || title || serieWL || serieTitle
+}
+
+const getSubTitle = (paint, serie) => {
+  const { subtitle, wallLabel} = (paint || {})
+  const { subtitle : serieSubtitle, wallLabel : serieWallLabel } = (serie || {})
+  const { subtitle : paintWL } = (wallLabel || {})
+  const { subtitle : serieWL } = (serieWallLabel || {})
+  return paintWL || serieWL || subtitle || serieSubtitle
+}
+
+const getDescription = (paint, serie) => {
+  const { classification, sizes, wallLabel } = (paint || {})
+
+  if(wallLabel && wallLabel.description)
+    return wallLabel.description
+
   const { technique, surface } = (classification || {})
   const techniqueText = technique === undefined ? null : getTranslatedText('Technique.withSurface', null, [ technique, surface.toLowerCase() ], true)
 
@@ -78,62 +100,42 @@ const getDescription = (paint) => {
   return txt
 }
 
-const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png', showQRCode = true}) => {
+const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png', showQRCode=true}) => {
     //const data = useStaticQuery(query)
-    const domEl = useRef(null);
+    const domEl = useRef(null)
 
+    const [ initialized, setInitialized ] = useState(false);
     const [ domtoimage, setDomtoimage ] = useState()
     const [ paintVisible, setPaintVisible ] = useState(initVisible)
     const [ isDownloading, setIsDownloading ] = useState(false)
-    if(!paint || !site)
-        return null
-
-    const { title, subtitle, date, reference, pageName, id} = paint
-    //const { description, wallLabelDescription, body} = paint
-    const { sellingData, quote = {}, qrCode} = paint
+    
+    const { title, date, reference, pageName, id} = (paint || {})
+    //const { description, wallLabel, body} = paint
+    const { sellingData, quote = {}, qrCode} = (paint || {})
     //const { classification, sizes } = paint
     //const { title : serieTitle } = (serie || {})
-    const { subtitle : serieSubtitle } = (serie || {})
+    //const { subtitle : serieSubtitle } = (serie || {})
     //const { composition, technique, orientation, serie : cSerie, style, surface, category, tags } = classification
     const { productState, priceEur, showPrice } = (sellingData || {})
     //const { showProductState, priceDollar, showPrice } = (sellingData || {})
 
     //const urlSite = getSiteURL(site)
-    const author = site.siteMetadata.author
+    const author = site && site.siteMetadata ? site.siteMetadata.author : ""
     //const year = (!date instanceof Date ? new Date() : date).Year()
     const year = date
-    const wlDescription = getDescription(paint)
 
-    eventBus.on("setVisiblePaint", ({paintId, show}) => {
-      if(paintId !== id)
-        return
-        setPaintVisible(show)
-    });
+    const wlTitle = getTitle(paint, serie)
+    const wlSubtitle = getSubTitle(paint, serie)
+    const wlDescription = getDescription(paint, serie)
 
-    eventBus.on("setVisibleSeriePaints", ({id, show}) => {
-      if(serieId !== id)
-        return
-        setPaintVisible(show)
-    });
-
-    eventBus.on("setDownloadSerieWallLabelsPaintsAsImage", ({id}) => {
-      if(serieId !== id || !paintVisible)
-        return
-        saveWallLabelAsImage()
-    });
-
-
-    const toggleVisiblePaint = () => {
-      setPaintVisible(!paintVisible)
-    }
-
-    const saveWallLabelAsImage = async() => {
+    const saveWallLabelAsImage = useCallback(async(data) => {
       if(isDownloading)
         return 
       
       setIsDownloading(true)
       setPaintVisible(true)
 
+      const type = data ? data.imageFileType : ""
       let d2i = domtoimage
       if(!d2i){
         d2i = getDomToImage()
@@ -145,7 +147,8 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
 
       let callFunction = "toPng"
       let extension = "png"
-      switch(imageFileType){
+      let effectiveType = type || imageFileType
+      switch(effectiveType){
         case "jpg":
           extension = "jpg"
           callFunction = "toJpeg"
@@ -165,7 +168,42 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
           setTimeout(function(){
             setIsDownloading(false)
           },1000)
+        }).catch((err) => {
+          console.log(err);
         });
+    },[ isDownloading, domtoimage, id, pageName, reference, imageFileType])
+
+    useEffect(() => {
+      if (!initialized) {
+      
+        eventBus.on("setVisiblePaint", ({paintId, show}) => {
+          if(paintId !== id)
+            return
+          setPaintVisible(show)
+        }, id);
+
+        eventBus.on("setVisibleSeriePaints", ({id, show}) => {
+          if(serieId !== id)
+            return
+          setPaintVisible(show)
+        }, serieId);
+
+        eventBus.on("setDownloadSerieWallLabelsPaintsAsImage", ({id}) => {
+          //if(serieId !== id || !paintVisible)
+          if(serieId !== id)
+            return
+          saveWallLabelAsImage()
+        }, serieId);
+      
+        setInitialized(true)
+      }
+    },[ initialized, paintVisible, id, pageName, serieId, saveWallLabelAsImage ]);
+
+    if(!paint || !site)
+        return null
+
+    const toggleVisiblePaint = () => {
+      setPaintVisible(!paintVisible)
     }
 
     return (
@@ -197,16 +235,15 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
         <WallLabelWrapper
             className={(!allowToHide || paintVisible) ? 'is-visible' : 'is-not-visible'}>
           <WallLabelContainer
-            id={domEl}
             ref={domEl}>
               <ContentBlock>
                 <TitlesBlock>
                   <TitlesWrapper>
-                    {(serieSubtitle || subtitle) &&
-                      <PaintSubTitleContainer>{serieSubtitle || subtitle}</PaintSubTitleContainer>
+                    {(wlSubtitle) &&
+                      <PaintSubTitleContainer>{wlSubtitle}</PaintSubTitleContainer>
                     }
                     <PaintTitleContainer
-                    >{title}</PaintTitleContainer>
+                    >{wlTitle}</PaintTitleContainer>
                   </TitlesWrapper>
                   <AuthorContainer>{author}</AuthorContainer>
                   {year &&
@@ -290,10 +327,9 @@ const WallLabelWrapper = styled.div`
   display:flex;
   justify-content: center;
   flex-direction: row;
-  min-height:400px;
-  max-width: 15cm;
+  min-height:15cm;
+  min-width: 15cm;
   width:100%;
-  height: 15cm;
   margin:auto;
   position:relative;
 
@@ -333,8 +369,8 @@ const WallLabelContainer = styled.div`
   border: 1px solid #333;
   background:white;
   z-index:0;
-  width:100%;
-  height: 100%;
+  width:15cm;
+  height: 15cm;
   text-align: center;
 
   page-break-inside: avoid;

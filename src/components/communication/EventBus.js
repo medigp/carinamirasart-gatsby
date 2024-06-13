@@ -1,15 +1,28 @@
 const eventBus = {
-    on(event, callback) {
-        if(typeof document !== `undefined`)
-            document.addEventListener(event, (e) => callback(e.detail));
+    on(event, callback, id) {
+        if(typeof document == `undefined`)
+            return;
+        var eventId = event
+        if(typeof id != `undefined`)
+            eventId = event +'.'+id
+        this.off(event, callback, id);
+        document.addEventListener(eventId, (e) => callback(e.detail));
     },
-    dispatch(event, data) {
-        if(typeof document !== `undefined`)
-            document.dispatchEvent(new CustomEvent(event, { detail: data }));
+    dispatch(event, data, id) {
+        if(typeof document == `undefined`)
+            return;
+        var eventId = event
+        if(typeof id != `undefined`)
+            eventId = event +'.'+id
+        document.dispatchEvent(new CustomEvent(eventId, { detail: data }));
     },
-    remove(event, callback) {
-        if(typeof document !== `undefined`)
-            document.removeEventListener(event, callback);
+    off(event, callback, id) {
+        if(typeof document == `undefined`)
+            return;
+        var eventId = event
+        if(typeof id != `undefined`)
+            eventId = event +'.'+id
+        document.removeEventListener(eventId, callback);
     },
 };
 

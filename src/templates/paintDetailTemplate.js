@@ -330,7 +330,11 @@ export const query = graphql`
           url
         }
         description
-        wallLabelDescription
+        wallLabel {
+          title
+          subtitle
+          description
+        }
         body
         image {
           image_alt_text

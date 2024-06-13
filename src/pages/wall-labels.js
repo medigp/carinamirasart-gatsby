@@ -11,6 +11,7 @@ import WallLabelSerie from "/src/components/layout/wallLabel/WallLabelSerie"
 
 const WallLabels = ({data}) => {
   const [ imageFileType, setImageFileType ] = useState('png')
+  const [ showQRCode, setShowQRCode ] = useState(true)
   const { allPaint, allSerie, site } = data
   const { nodes } = allPaint
   const { nodes : series } = allSerie
@@ -69,6 +70,7 @@ const WallLabels = ({data}) => {
   const seriesAndPaints = getSeriesAndPaints(nodes, filteredSeries)
   const seriesById = getSeriesById(series)
   const fileTypeLabel = getTranslatedText('File.type')
+  const qrLabel = getTranslatedText('Show.QR')
 
   return (
         <Layout pageTitle={title}>
@@ -99,6 +101,26 @@ const WallLabels = ({data}) => {
                     </ImageExtension>
                   </ImageExtensionsList>
                 </ImageExtensionsWrapper>
+                
+                <ImageExtensionsWrapper>
+                  <ImageExtensionsList>
+                    <ImageExtensionLabel>
+                        {qrLabel}
+                    </ImageExtensionLabel>
+                    <ImageExtension
+                      onClick={() => { setShowQRCode(true)} }
+                      className={showQRCode ? 'selected' : ''}
+                    >
+                      ON
+                    </ImageExtension>
+                    <ImageExtension
+                      onClick={() => { setShowQRCode(false)} }
+                      className={!showQRCode ? 'selected' : ''}
+                    >
+                      OFF
+                    </ImageExtension>
+                  </ImageExtensionsList>
+                </ImageExtensionsWrapper>
                 {
                 filteredSeries.map((serieId, index) => (
                   <SerieWrapper
@@ -112,6 +134,7 @@ const WallLabels = ({data}) => {
                         allowToHide={true}
                         initVisible={false}
                         imageFileType={imageFileType}
+                        showQRCode={showQRCode}
                       />
                   </SerieWrapper>
                   ))
@@ -152,7 +175,11 @@ query {
       subtitle
       date
       description
-      wallLabelDescription
+      wallLabel {
+        title
+        subtitle
+        description
+      }
       body
       quote {
         text
@@ -195,6 +222,13 @@ query {
       hide
       title
       subtitle
+      url
+      qrCode
+      wallLabel {
+        title
+        subtitle
+        description
+      }
     }
   }
   site {

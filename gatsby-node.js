@@ -26,7 +26,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
-            wallLabelDescription : String
+            wallLabel : WallLabelData
             body: String
             lastModificationDate: Date @dateformat
         }
@@ -49,7 +49,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
-            wallLabelDescription : String
+            wallLabel : WallLabelData
             body: String
             lastModificationDate: Date @dateformat
         }
@@ -73,7 +73,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
-            wallLabelDescription : String
+            wallLabel : WallLabelData
             body: String
             sellingData : SellingData
             lastModificationDate: Date @dateformat
@@ -98,7 +98,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
-            wallLabelDescription : String
+            wallLabel : WallLabelData
             body: String
             sellingData : SellingData
             lastModificationDate: Date @dateformat
@@ -141,7 +141,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             image : ImageGroup
             breadcrumbs : [ BreadCrumb ]
             description : String
-            wallLabelDescription : String
+            wallLabel : WallLabelData
             body: String
             seo : Seo
             quote : Quote
@@ -189,6 +189,12 @@ exports.createSchemaCustomization = ({ actions }) => {
             surface : String
             style: String
             tags : [ String ]
+        }
+
+        type WallLabelData {
+            title: String
+            subtitle : String
+            description : String
         }
 
         enum CategoryClassificationEnum {
@@ -373,7 +379,7 @@ exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
             subtitle : node.frontmatter.subtitle,
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
-            wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
+            wallLabel : getWallLabelDataByNode(node),
             lastModificationDate : getLastModificationDateByNode(node),
             body : node.body,
             parent : node.id,
@@ -433,7 +439,7 @@ exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
             subtitle : node.frontmatter.subtitle,
             quote : getQuoteObjectByNode(node),
             description : node.frontmatter.description,
-            wallLabelDescription : node.frontmatter.wallLabelDescription || node.frontmatter.description,
+            wallLabel : getWallLabelDataByNode(node),
             body : node.body,
             sellingData : getSellingDataByNode(node),
             lastModificationDate : getLastModificationDateByNode(node),
@@ -661,6 +667,19 @@ const getSeoObjectByNode = (node, classification = {}, type = 'Undefined') => {
         description : seoDescription || seo.description || description || subtitle || title,
         image : (seo ? seo.image : null) || mainImage,
         keywords : _keywords
+    }
+}
+
+const getWallLabelDataByNode = (node) => {
+    if(!node || !node.frontmatter)
+        return undefined
+    const { wallLabel } = node.frontmatter;
+    const { title, subtitle, description } = (wallLabel || {})
+    
+    return {
+        title: title, 
+        subtitle: subtitle, 
+        description: description
     }
 }
 
