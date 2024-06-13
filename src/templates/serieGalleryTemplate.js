@@ -21,7 +21,7 @@ const GalleryTemplate = ({data, pageContext}) => {
   if(!url && contextSerie)
     url = '/'+contextSerie.toLowerCase()
 
-  const { text : quoteText } = quote
+  const { text : quoteText } = (quote || {})
   const showSerieDescription = serieInfo && (description || subtitle || quoteText)
 
   const { isClient } = useIsClient();

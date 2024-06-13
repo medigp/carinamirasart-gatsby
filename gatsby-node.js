@@ -276,6 +276,11 @@ exports.createSchemaCustomization = ({ actions }) => {
     let galleryElement = calcBreadCrumbElement('Gallery')
     let url = ''
     bc.push(galleryElement)
+    if(!paint){
+        let seriesGalleryElement = calcBreadCrumbElement('Series')
+        bc.push(seriesGalleryElement)
+    }
+
     if(serie && process.env.GATSBY_CREATE_GALLERY_SERIES){
         let serieElement = calcBreadCrumbElement(serie, url)
         if(serieElement !== null)
@@ -360,12 +365,12 @@ exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
         const _url = `/${urlRef}/`
         const _breadcrumbs = calcBreadCrumbs(_serie, null)
         const _classification= getClassificationDataObjectByNode(node)
-        const _qrCode = ''//await createQRCode(_url)
+        //const _qrCode = ''//await createQRCode(_url)
         actions.createNode({
             id: createNodeId(`Serie-${node.id}`),
             hide : hide,
             url : _url,
-            qrCode: _qrCode,
+            //qrCode: _qrCode,
             pageName : pageName || _serie,
             seo : getSeoObjectByNode(node, _classification, 'Serie'),
             reference : reference || urlRef,

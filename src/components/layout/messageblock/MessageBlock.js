@@ -5,7 +5,7 @@ import { DeviceSize } from "/src/data/responsive"
 import { GatsbyImage, getImage } from "gatsby-plugin-image"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 
-const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, showLink = false, linkText, linkUrl, fullSize = false}) => {
+const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, showLink = false, linkText, linkUrl, fullSize = false, imageOnLeft = true, isList=false, indexInList=0}) => {
     const imageRef = getImage(image)
 
     if(addDefaultText){
@@ -16,7 +16,12 @@ const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, sho
     return (
         <BlockContainer>
             <MessageContainer
-                className={(fullSize ? 'full-size' : '')}>
+                className={
+                    (fullSize ? 'full-size' : '') +' '
+                    + (imageOnLeft ? '' : 'image-on-right') +' '
+                    + (isList ? 'is-list-element' : '') +' '
+                    + (indexInList > 0 ? 'not-first-element' : 'first-element' )
+                    }>
                 {imageRef && 
                     <PictureContainer>
                         <StyledGatsbyImage
@@ -27,7 +32,7 @@ const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, sho
                 }
                 {(title || subtitle || text || (showLink && linkText && linkUrl)) &&
                     <TextContainer
-                        className={(imageRef ? 'has-image' : '')}>
+                        className={(imageRef ? 'has-image' : '') + ' ' + (imageOnLeft ? '' : 'image-on-right')}>
                         {title && <h1>{title}</h1>}
                         {subtitle && <p>{subtitle}</p>}
                         {text && <p>{text}</p>}
@@ -61,8 +66,21 @@ const MessageContainer = styled.div`
         width:100%;
     }
 
+    &.is-list-element{
+        padding-top:3em;
+        padding-bottom:5em;
+
+        &.not-first-element{
+            padding:5em 0;
+        }
+    }
+
     @media ( min-width : ${DeviceSize.mobile}px ){
         flex-direction: row;
+
+        &.image-on-right{
+            flex-direction: row-reverse;
+        }
     }
 `
 
@@ -97,6 +115,22 @@ const TextContainer = styled.div`
 
         @media ( min-width : ${DeviceSize.mobile}px ){
             padding: 1rem;
+        }
+
+    }
+
+    &.image-on-right{
+        flex-direction: row-reverse;
+
+        h1,
+        h1 + p{
+            text-align: right;
+        }
+
+        h1 {
+            ::before{
+                right:0;
+            }
         }
     }
 
