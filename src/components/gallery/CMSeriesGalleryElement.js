@@ -18,7 +18,7 @@ const CMSeriesGalleryElement = ({serieInfo, index}) => {
                 fullSize={true}
                 isList={true}
                 indexInList={index}
-                imageOnLeft={index % 2 === 0}
+                alignOnLeft={index % 2 === 0}
             />
         </ElementContainer>
     )

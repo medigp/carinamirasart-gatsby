@@ -5,7 +5,7 @@ import { DeviceSize } from "/src/data/responsive"
 import { GatsbyImage, getImage } from "gatsby-plugin-image"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 
-const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, showLink = false, linkText, linkUrl, fullSize = false, imageOnLeft = true, isList=false, indexInList=0}) => {
+const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, showLink = false, linkText, linkUrl, fullSize = false, alignOnLeft = true, isList=false, indexInList=0}) => {
     const imageRef = getImage(image)
 
     if(addDefaultText){
@@ -18,7 +18,7 @@ const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, sho
             <MessageContainer
                 className={
                     (fullSize ? 'full-size' : '') +' '
-                    + (imageOnLeft ? '' : 'image-on-right') +' '
+                    + (alignOnLeft ? 'align-on-left' : 'align-on-right') +' '
                     + (isList ? 'is-list-element' : '') +' '
                     + (indexInList > 0 ? 'not-first-element' : 'first-element' )
                     }>
@@ -32,7 +32,7 @@ const MessageBlock = ({image, title, subtitle, text, addDefaultText = false, sho
                 }
                 {(title || subtitle || text || (showLink && linkText && linkUrl)) &&
                     <TextContainer
-                        className={(imageRef ? 'has-image' : '') + ' ' + (imageOnLeft ? '' : 'image-on-right')}>
+                        className={(imageRef ? 'has-image' : '') + ' ' + (alignOnLeft ? 'align-on-left' : 'align-on-right')}>
                         {title && <h1>{title}</h1>}
                         {subtitle && <p>{subtitle}</p>}
                         {text && <p>{text}</p>}
@@ -78,7 +78,7 @@ const MessageContainer = styled.div`
     @media ( min-width : ${DeviceSize.mobile}px ){
         flex-direction: row;
 
-        &.image-on-right{
+        &.align-on-right{
             flex-direction: row-reverse;
         }
     }
@@ -87,12 +87,12 @@ const MessageContainer = styled.div`
 const PictureContainer = styled.div`
     padding: 2rem;
     max-width: 200px;
-    max-height: 200px;
+    min-width:150px;
     width: 40vw;
-    height: 40vw;
+    aspect-ratio: 1 / 1;
     flex:1;
     flex-grow:1;
-    margin: auto;
+    align-self: center;
 `
 const StyledGatsbyImage = styled(GatsbyImage)`
     border-radius: 50%;
@@ -119,7 +119,7 @@ const TextContainer = styled.div`
 
     }
 
-    &.image-on-right{
+    &.align-on-right{
         flex-direction: row-reverse;
 
         h1,

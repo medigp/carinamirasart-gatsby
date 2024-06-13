@@ -460,6 +460,17 @@ export const Translation = {
         en : 'Acrylic and watercolor',
         es : 'Acrílico y acuarela'
     },
+    'watercolor' : {
+        ca : 'Aquarel·la',
+        en : 'Watercolor',
+        es : 'Acuarela'
+    },
+    'mixedmedia' : {
+        ca : 'Tècnica mixta',
+        en : 'Mixed media',
+        es : 'Técnica mixta'
+    },
+
     /* Tipus de superfícies */
     'canvas' : {
         ca : 'Tela',
@@ -475,6 +486,11 @@ export const Translation = {
         ca : 'Fusta',
         en : 'Wood',
         es : 'Madera'
+    },
+    'wall' : {
+        ca : 'Mur',
+        en : 'Wall',
+        es : 'Muro'
     },
     /* Quotes */
     'quote' : {
