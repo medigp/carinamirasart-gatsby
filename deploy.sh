@@ -4,6 +4,9 @@
 # i ha de tenir permisos d’execució. 
 # En cas de no tenir-ne, executar:
 # "chmod +x deploy.sh"
+# -> Si es vol executar des del Visual Studio Code, 
+#     obrir un terminal del tipus bash
+# -> Per veure el progrés, mirar al fitxer de logs
 
 # -----------------------------------------------------------
 # -----------------------------------------------------------
@@ -100,11 +103,11 @@ else
   fi 
 fi
 
-# Últimes execucions (en segons): 1509
+# Últimes execucions (en segons): 1739s
 
 CLEAN_AVG_TIME=4                  # 5
-BUILD_AVG_TIME=700                # 693
-UPLOAD_AVG_TIME=900               # 807
+BUILD_AVG_TIME=720                # 743   (12 minuts)
+UPLOAD_AVG_TIME=1080              # 1107  (18 minuts)
 CLEAN_SERVER_AVG_TIME=1           # 
 FILES_TO_REAL_AVG_TIME=1          # 
 DELETE_TEMP_FILES_AVG_TIME=2      # 4
@@ -135,21 +138,24 @@ FILE_EXCLUSIONS=(".htaccess" ".htaccess_disabled")
 [ -n $DEFINED_SUBDOMAINS ] && PATH_EXCLUSIONS=(${PATH_EXCLUSIONS[@]} ${DEFINED_SUBDOMAINS[@]})
 
 DELETE_EXCLUSIONS=""
+ADD_A=""
 if [ -n $PATH_EXCLUSIONS ]
 then
   for elem in ${PATH_EXCLUSIONS[@]}
   do
-    [ DELETE_EXCLUSIONS != "" ] && DELETE_EXCLUSIONS+=" -a "
-    DELETE_EXCLUSIONS+="! -path \"$SERVER_PATH/$elem\" "
+    [ $ADD_A != "" ] && DELETE_EXCLUSIONS+=" -a "
+    DELETE_EXCLUSIONS+="! -path '$SERVER_PATH/$elem*'"
+    ADD_A="S"
   done
 fi
 
-if [ -n $FILE_EXCLUSIONS]
+if [ -n $FILE_EXCLUSIONS ]
 then
   for elem in ${FILE_EXCLUSIONS[@]}
   do
-    [ DELETE_EXCLUSIONS != "" ] && DELETE_EXCLUSIONS+='-a '
-    DELETE_EXCLUSIONS+="! -name \"$elem\" "
+    [ $ADD_A != "" ] && DELETE_EXCLUSIONS+=' -a '
+    DELETE_EXCLUSIONS+="! -name '$elem'"
+    ADD_A="S"
   done
 fi
 
@@ -165,14 +171,18 @@ echo "---- -> Temps esperat aproximat: $EXPECTED_TIME segons" >> $LOGFILE
 echo "---- -> Data de realització: $CURRENT_DATE" >> $LOGFILE
 echo "---------------------------------------------------------------"  >> $LOGFILE
 
+./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): Iniciant deploy..."
+
 echo "- Inici del procés de deploy" >> $LOGFILE
 if [ $CLEAN == "S" ]
 then
   echo "- Inicialitzant el clean del projecte en local..." >> $LOGFILE
+  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Executant clean de Gatsby..."
+  
   CLEAN_START=$SECONDS
   gatsby clean
   CLEAN_ENDS=$SECONDS
-  echo "|--> Clean executat amb èxit ($(($CLEAN_ENDS-$CLEAN_START)) seconds)." >> $LOGFILE
+  echo "|--> Clean executat amb èxit ($(($CLEAN_ENDS-$CLEAN_START)) segons)." >> $LOGFILE
 else
   echo "- Procés definit sense l'execució del clean del projecte local" >> $LOGFILE
 fi
@@ -181,6 +191,7 @@ fi
 if [ $EXECUTE_BUILD == "S" ]
 then
   echo "- Executant build de Gatsby..." >> $LOGFILE
+  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Executant build de Gatsby..."
   BUILD_START=$SECONDS
   gatsby build >> $LOGFILE
   BUILD_ENDS=$SECONDS
@@ -191,16 +202,19 @@ fi
 # Comprovar si s’ha generat la carpeta
 if [ -d $LOCAL_PATH ] 
 then
-  echo "|--> Build generat amb èxit ($(($BUILD_ENDS-$BUILD_START)) seconds)." >> $LOGFILE
+  TEMPS_BUILD=$(($BUILD_ENDS-$BUILD_START))
+  echo "|--> Build generat amb èxit ($TEMPS_BUILD segons)." >> $LOGFILE
+  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Build generat correctament ($TEMPS_BUILD segons)"
   ERROR="0"
 else
   echo "|--> ERROR: el build no s'ha realitzat correctament" >> $LOGFILE
+  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al fer el build de Gatsby"
   ERROR="1"
 fi
 
 if [ $ERROR -eq "0" ]
 then
-  echo "- Crear la carpeta temporal al servidor"
+  echo "- Crear la carpeta temporal al servidor" >> $LOGFILE
   ssh -p $PORT $USERNAME@$IP "mkdir $SERVER_PATH/$TEMP_FOLDER -p" >> $LOGFILE
   
   if [ $? -eq 0 ]
@@ -216,15 +230,19 @@ if [ $ERROR -eq "0" ]
 then
   START_UPLOAD=$SECONDS
   echo "- Copiant arxius a la carpeta temporal del servidor..." >> $LOGFILE
+  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Inici de la pujada de fitxers al servidor..."
   # Normalment tarda sobre els 600 segons
   scp -q -P $PORT -r $WINDOWS_PATH/$LOCAL_PATH/* $USERNAME@$IP:$SERVER_PATH/$TEMP_FOLDER >> $LOGFILE
   END_UPLOAD=$SECONDS
 
   if [ $? -eq 0 ]
   then
-    echo "|--> Pujada realitzada amb èxit ($(($END_UPLOAD-$START_UPLOAD)) seconds)" >> $LOGFILE
+    TEMPS_UPLOAD=$(($END_UPLOAD-$START_UPLOAD))
+    echo "|--> Pujada realitzada amb èxit ($TEMPS_UPLOAD segons)" >> $LOGFILE
+    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Pujada realitzada correctament ($TEMPS_UPLOAD segons)"
   else 
     echo "|--> ERROR: no s'ha pogut pujar els arxius a la carpeta temporal del servidor (Codi $?)" >> $LOGFILE
+    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al pujar els arxius al servidor"
     ERROR="1"
   fi
 fi
@@ -262,8 +280,8 @@ then
   then
     echo "- Eliminant contingut preexistent..."
     # Si s'han definit exclusions, s'executa del delete
-    [ -n $DELETE_EXCLUSIONS ] && find $_SERVER_PATH -mindepth 1 \( $DELETE_EXCLUSIONS \) -delete
-    
+    find $SERVER_PATH -mindepth 1 \( $DELETE_EXCLUSIONS \) -delete
+
     if [ $? -eq 0 ]
     then 
       echo "|--> Contingut eliminat correctament"
@@ -327,9 +345,20 @@ END_PROCESS_DATE=$SECONDS
 echo "---------------------------------------------------------------"  >> $LOGFILE
 if [ $ERROR -eq "0" ]
 then
-  echo "---- El desplegament s’ha fet correctament en $(($END_PROCESS_DATE-$START_PROCESS_DATE)) segons." >> $LOGFILE
+  TEMPS_TOTAL=$(($END_PROCESS_DATE-$START_PROCESS_DATE))
+  MINUTS_TOTALS=$(($TEMPS_TOTAL / 60))
+  SEGONS_TOTALS=$(($TEMPS_TOTAL - ($MINUTS_TOTALS * 60)))
+  DECIMALS_MINUTS_TOTALS=$(( $SEGONS_TOTALS * 100 / 60  ))
+  echo "---- El desplegament s’ha fet correctament en $MINUTS_TOTALS,$DECIMALS_MINUTS_TOTALS minuts." >> $LOGFILE
+  PREFIX="www"
+  if [ $ENVIRONMENT == "TEST" ]
+  then
+    PREFIX="test"
+  fi
+  ./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): Deploy fet correctament en $MINUTS_TOTALS minuts! Ves a https://$PREFIX.carinamiras.art/"
 else
-  echo "---- S'han produït errors en el desplegament" >> $LOGFILE
+  echo "---- S’han produït errors en el desplegament" >> $LOGFILE
+  ./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): ERROR, desplagament incorrecte"
 fi
 
 
