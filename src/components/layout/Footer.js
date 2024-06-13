@@ -48,6 +48,7 @@ const StyledFooter = styled.footer`
         display:inline-block;
         page-break-inside: avoid;
         break-inside: avoid;
+        background: var(--print-bg-color);
     }
 `
 
