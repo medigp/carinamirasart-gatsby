@@ -14,9 +14,9 @@ export const Translation = {
         es : 'Carina Miras'
     },
     'page.subtitle'  : {
-        ca : 'Art Abstracte',
-        en : 'Abstract Art',
-        es : 'Arte Abstracto'
+        ca : 'Art visual',
+        en : 'Visual Art',
+        es : 'Arte Visual'
     },
     'paint.copyright' : {
         ca : 'Pintura creada per Carina Miras',
@@ -34,6 +34,11 @@ export const Translation = {
         ca : 'Galeria',
         en : 'Gallery',
         es : 'Galería'
+    },
+    'series' : {
+        ca : 'Series',
+        en : 'Series',
+        es : 'Series'
     },
     'reviews' : {
         ca : 'Ressenyes',
@@ -64,7 +69,25 @@ export const Translation = {
         en : 'Work gallery of Carina Miras',
         es : 'Galería de obras de Carina Miras'
     },
-    /* Gallery */
+
+    /* Series */
+    'series.title' : {
+        ca : 'Sèries',
+        en : 'Series',
+        es : 'Series'
+    },
+    'series.subtitle' : {
+        ca : 'Art visual',
+        en : 'Visual art',
+        es : 'Arte visual'
+    },
+    'series.seo.description' : {
+        ca : 'Sèries d\'obres de Carina Miras',
+        en : 'Work gallery series of Carina Miras',
+        es : 'Galería de series de obras de Carina Miras'
+    },
+
+    /* Wall Labels */
     'walllabels' : {
         ca : 'Cartelleria',
         en : 'Wall labels',
@@ -84,6 +107,11 @@ export const Translation = {
         ca : 'Tipus de fitxer',
         en : 'File type',
         es : 'Tipo de fichero'
+    },
+    'show.qr' : {
+        ca : 'Mostrar QR',
+        en : 'Show QR',
+        es : 'Mostrar QR'
     },
 
     /* About */
@@ -406,10 +434,10 @@ export const Translation = {
         en : 'Scratch',
         es : 'Rascado'
     },
-    'scratch.withfigurative' : {
-        ca : 'Rascat amb figuratiu',
-        en : 'Scratch with figurative',
-        es : 'Rascado con figurativo'
+    'scratch.andfigurative' : {
+        ca : 'Rascat i figuratiu',
+        en : 'Scratch and figurative',
+        es : 'Rascado y figurativo'
     },
     'textures' : {
         ca : 'Textures',

@@ -9,7 +9,7 @@ import { getTranslatedText } from "/src/components/translate/TranslateText"
 
 const Gallery = ({data}) => {
   
-    const { allPaint, allSerie } = data
+  const { allPaint, allSerie } = data
   const { nodes } = allPaint
   const { nodes : series } = allSerie
 

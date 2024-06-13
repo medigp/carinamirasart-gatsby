@@ -88,6 +88,9 @@ const StyledLayout = styled.div`
     width:100vw;
   }
 
+  @media print {
+    background: var(--print-bg-color);
+  }
 `
 const StyledBody = styled.main`
   position: relative;

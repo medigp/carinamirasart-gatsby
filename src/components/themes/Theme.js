@@ -10,13 +10,16 @@ const defaultPrimaryColor = '#333'
 const defaultSecondaryColor = '#ff7496'
 const defaultAlternativeColor = '#2ac1b2'
 
-const defaultPrimaryBGColor = 'white'
+//const defaultPrimaryBGColor = 'white'
+const defaultPrimaryBGColor = '#f1f1ef'
 const defaultSecondaryBGColor = '#b9feff'
 const defaultAlternativeBGColor = ''
+const defaultPrintBGColor = 'white'
 
 const maxContentWidth = '1024px';
 const headerHeight = '80px'
-const headerBgColor = 'rgba(255,255,255, 0.8)'
+//const headerBgColor = 'rgba(255,255,255, 0.8)'
+const headerBgColor = 'rgba(241,242,239, 0.8)'
 const footerHeight = '60px'
 const layoutPadding = 2 // rem
 const layoutMobilePadding = 1.5 //rem
@@ -36,6 +39,7 @@ export const ThemeStyles = createGlobalStyle`
         --primary-bg-color : ${defaultPrimaryBGColor};
         --secondary-bg-color : ${defaultSecondaryBGColor};
         --alternative-bg-color : ${defaultAlternativeBGColor};
+        --print-bg-color : ${defaultPrintBGColor};
 
         --primary-link-color : var(--primary-color);
         --primary-link-hover-color : var(--secondary-color);
@@ -76,6 +80,10 @@ export const ThemeStyles = createGlobalStyle`
         font-family: var(--text-font-family);
         line-height: var(--text-line-height); 
         min-width: var(--media-minimum-width);
+
+        @media print {
+            background: var(--print-bg-color);
+        }
     }
 
     .body-wrapper{

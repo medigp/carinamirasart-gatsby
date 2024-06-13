@@ -1,35 +1,46 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import styled from "styled-components"
 import eventBus from "/src/components/communication/EventBus"
 import WallLabel from "/src/components/layout/wallLabel/WallLabel"
 import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/ai";
 
-const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png'}) => {
+const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png', showQRCode=true}) => {
     //const data = useStaticQuery(query)
+
+    const [ initialized, setInitialized ] = useState(false);
     const [ serieVisible, setSerieVisible ] = useState(initVisible)
+    
+    const { title, subtitle } = (serie || {})
+
+    useEffect(() => {
+      if (!initialized) {
+        eventBus.on("setVisibleSerie", ({id, show}) => {
+          if(serieId !== id)
+            return
+          setSerieVisible(show)
+        }, serieId);
+
+        setInitialized(true)
+      }
+    },[ initialized, serieId ]);
+
     if(!paints)
         return null
 
-    const { title, subtitle } = (serie || {})
-    eventBus.on("setVisibleSerie", ({id, show}) => {
-      if(serieId !== id)
-        return
-      setSerieVisible(show)
-    });
-
     const toggleVisibleSerie = () => {
-      eventBus.dispatch("setVisibleSeriePaints", {id : serieId, show : !serieVisible})
+      eventBus.dispatch("setVisibleSeriePaints", {id : serieId, show : !serieVisible}, serieId)
       setSerieVisible(!serieVisible)
     }
 
     const saveSeriePaintsWallLabelAsImage = () => {
-      eventBus.dispatch("setDownloadSerieWallLabelsPaintsAsImage", {id : serieId})
+      eventBus.dispatch("setDownloadSerieWallLabelsPaintsAsImage", {id : serieId, imageFileType}, serieId)
     }
 
     return (
       <WallLabelRoot>
-        {allowToHide &&
-            <WallLabelSerieTitle>
+        
+        <WallLabelSerieTitle>
+          {allowToHide &&
               <StyledEyeIcon
                 onClick={() => toggleVisibleSerie()}>
                 {serieVisible && 
@@ -39,19 +50,24 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
                   <AiOutlineEyeInvisible />
                 }
               </StyledEyeIcon>
-              <WallLabelSerieTitleClickable
-                onClick={() => toggleVisibleSerie()}
-                >
-                {subtitle || title || serieId}
-              </WallLabelSerieTitleClickable>
-              {serieVisible && 
-                <StyledSaveIcon
-                    onClick={() => saveSeriePaintsWallLabelAsImage()}>
-                    <AiOutlineSave />
-                </StyledSaveIcon>
+            }
+            <WallLabelSerieTitleClickable
+              onClick={() => toggleVisibleSerie()}
+              >
+              {title &&
+                <span>{title}: </span>
               }
-            </WallLabelSerieTitle>
-          }
+              {subtitle || serieId}
+            </WallLabelSerieTitleClickable>
+            
+            {serieVisible && 
+              <StyledSaveIcon
+                  onClick={() => saveSeriePaintsWallLabelAsImage()}>
+                  <AiOutlineSave />
+              </StyledSaveIcon>
+            }            
+        </WallLabelSerieTitle>
+          
         <WallLabelWrapper
             className={(!allowToHide || serieVisible) ? 'is-visible' : 'is-not-visible'}>
           {
@@ -71,6 +87,7 @@ const WallLabelSerie = ({paints, serie, serieId, site, allowToHide = false, init
                     allowToHide={allowToHide}
                     initVisible={initVisible}
                     imageFileType={imageFileType}
+                    showQRCode={showQRCode}
                   />
                   </WallLabelContent>
 

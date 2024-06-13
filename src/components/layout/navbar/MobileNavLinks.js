@@ -70,8 +70,7 @@ const LinksWrapper = styled.ul`
     list-style:none;
     width:100%;
     flex-direction: column;
-    justify-content: center;
-    gap: 2rem;
+    justify-content: space-around;
     position:fixed;
     top:80px;
     left:0;

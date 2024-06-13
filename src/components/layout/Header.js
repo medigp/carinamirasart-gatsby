@@ -24,6 +24,7 @@ const StyledHeader = styled.header`
 
     @media print {
         position: relative;
+        background: var(--print-bg-color);
     }
 `
 
