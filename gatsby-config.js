@@ -161,6 +161,6 @@ module.exports = {
         display : 'swap',
         crossOrigin : "anonymous"
       }
-    },
+    }
   ]
 };
