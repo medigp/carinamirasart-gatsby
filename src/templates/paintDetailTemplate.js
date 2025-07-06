@@ -25,7 +25,7 @@ const getSerieUrlFromBreadcrumbs = (breadcrumbs, serie) => {
 const PaintTemplate = ({data}) => {
   const { paint } = data
   const { breadcrumbs, title, subtitle, description, body} = paint
-  const { sellingData, classification, sizes, quote = {}, image : imageObject = {}} = paint
+  const { sellingData, classification, sizes, quote = {}, image : imageObject = {}, reference} = paint
   const { composition, technique, orientation, serie, style, surface, category, tags } = classification
   const { productState, showProductState, priceEur, priceDollar, showPrice } = (sellingData || {})
 
@@ -43,23 +43,28 @@ const PaintTemplate = ({data}) => {
             <LeftWrapper>
                 <ImageSlider
                     paint={imageObject}
+                    reference={reference}
                     className={'productState-' + productState}
                     displayHorizontally={!isMobile}
                 ></ImageSlider>
             </LeftWrapper>
             <RightWrapper>
-                <MainTitle>{title}</MainTitle>
+                <MainTitle
+                  className={'info-block-appear'}>{title}</MainTitle>
                 {subtitle &&
-                  <SubTitle>{subtitle}</SubTitle>
+                  <SubTitle
+                    className={'info-block-appear'}>{subtitle}</SubTitle>
                 }
                 
                 {description && 
-                  <PaintDescriptionWrapper>
+                  <PaintDescriptionWrapper
+                    className={'info-block-appear'}>
                     <Description dangerouslySetInnerHTML={{__html:description}} />
                   </PaintDescriptionWrapper>
                 }
                 <ListWrapper>
-                  <DefinitionsList>
+                  <DefinitionsList
+                    className={'info-block-appear'}>
                   {serie && serie !== 'Indefinida' && 
                       <>
                         <dt><TranslateText text='Serie' /></dt>
@@ -124,25 +129,31 @@ const PaintTemplate = ({data}) => {
           </Wrapper>
 
           {quote && quote.text && quote.showQuote &&
-            <SimpleWrapper>
+            <SimpleWrapper
+              className={'info-block-appear'}>
               <Quote quote={quote}/>
             </SimpleWrapper>
           }
 
           {sizes &&
-            <CompositionSchema
-              sizes={sizes}
-            />
+            <SimpleWrapper
+              className={'info-block-appear'}>
+              <CompositionSchema
+                sizes={sizes}
+              />
+            </SimpleWrapper>
           }
           
           {body && 
-              <BodyWrapper>
+              <BodyWrapper
+                className={'info-block-appear'}>
                 <Description dangerouslySetInnerHTML={{__html:body}} />
               </BodyWrapper>
           }
           
           {tags && false &&
-            <TagsWrapper>
+            <TagsWrapper
+              className={'info-block-appear'}>
               <div>
                 <b>tags:</b> {JSON.stringify(tags)}
               </div>

@@ -81,6 +81,7 @@ query {
   allPaint(sort: [{order: DESC}, {date: DESC}, {title: DESC}]) {
     nodes {
       id
+      reference
       url
       title
       hide

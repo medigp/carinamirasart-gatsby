@@ -54,14 +54,13 @@
       <meta name="copyright" content={author} />
       <meta name="keywords" content={keywordsString} />
 
+      <meta name="view-transition" content="same-origin" />
+
       <meta name="robots" content={robotsText} />
 
       <meta itemProp="name" content={titleFilled}/>
       <meta itemProp="description" content={metaDescription}/>
       <meta itemProp="image" content={metaImage}/>
-
-
-
       
       <meta property="og:url" content={metaUrlPage} />
       <meta property="og:type" content="website" />

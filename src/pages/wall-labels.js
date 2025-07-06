@@ -219,6 +219,8 @@ query {
     nodes {
       id
       serie
+      pageName
+      reference
       hide
       title
       subtitle

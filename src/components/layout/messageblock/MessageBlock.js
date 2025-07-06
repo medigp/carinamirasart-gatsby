@@ -99,6 +99,7 @@ const StyledGatsbyImage = styled(GatsbyImage)`
     width:100%;
     height:100%;
     transition: all 0.5s ease-in-out;
+    aspect-ratio: 1 / 1;
 
     :hover{
         transform: scale(1.2);

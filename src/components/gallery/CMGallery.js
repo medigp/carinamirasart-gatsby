@@ -5,7 +5,7 @@ import { Masonry } from "masonic"
 import EmptyMessageBlock from "/src/components/layout/messageblock/EmptyMessageBlock"
 
 const CMGallery = (props) => {
-    const {list = [] } = props;
+    const { list = [] } = props;
     if(list.length === 0)
         return (
             <EmptyMessageBlock />
