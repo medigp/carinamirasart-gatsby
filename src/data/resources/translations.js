@@ -98,6 +98,16 @@ export const Translation = {
         en : 'Wall labels',
         es : 'Cartelas'
     },
+    'walllabels.serie.prefix' : {
+        ca : 'Sèrie:',
+        en : 'Serie:',
+        es : 'Serie:'
+    },
+    'walllabels.painting.prefix' : {
+        ca : 'Quadre:',
+        en : 'Painging:',
+        es : 'Cuadro:'
+    },
     'walllabels.seo.description' : {
         ca : 'Galeria d\'obres de Carina Miras',
         en : 'Work gallery of Carina Miras',
@@ -113,6 +123,7 @@ export const Translation = {
         en : 'Show QR',
         es : 'Mostrar QR'
     },
+
 
     /* About */
     'about.title' : {
@@ -268,7 +279,7 @@ export const Translation = {
         en : '{2}$'
     },
     'serie' : {
-        ca : 'Serie',
+        ca : 'Sèrie',
         en : 'Serie',
         es : 'Serie'
     },
@@ -460,6 +471,17 @@ export const Translation = {
         en : 'Acrylic and watercolor',
         es : 'Acrílico y acuarela'
     },
+    'watercolor' : {
+        ca : 'Aquarel·la',
+        en : 'Watercolor',
+        es : 'Acuarela'
+    },
+    'mixedmedia' : {
+        ca : 'Tècnica mixta',
+        en : 'Mixed media',
+        es : 'Técnica mixta'
+    },
+
     /* Tipus de superfícies */
     'canvas' : {
         ca : 'Tela',
@@ -475,6 +497,11 @@ export const Translation = {
         ca : 'Fusta',
         en : 'Wood',
         es : 'Madera'
+    },
+    'wall' : {
+        ca : 'Mur',
+        en : 'Wall',
+        es : 'Muro'
     },
     /* Quotes */
     'quote' : {
@@ -495,6 +522,48 @@ export const Translation = {
     /******************************************************
      *  ELEMENTS GENÈRICS 
      * */
+
+    /* Accions */
+    'save' : {
+        ca : 'Guarda',
+        en : 'Save',
+        es : 'Guarda',
+    },
+    'save.all' : {
+        ca : 'Guarda tot',
+        en : 'Save all',
+        es : 'Guarda todo',
+    },
+    'show' : {
+        ca : 'Mostra',
+        en : 'Show',
+        es : 'Muestra',
+    },
+    'show.all' : {
+        ca : 'Mostra tot',
+        en : 'Show all',
+        es : 'Muestra todo',
+    },
+    'hide' : {
+        ca : 'Amaga',
+        en : 'Hide',
+        es : 'Oculta',
+    },
+    'hide.all' : {
+        ca : 'Amaga tot',
+        en : 'Hide all',
+        es : 'Oculta todo',
+    },
+    'download' : {
+        ca : 'Descarrega',
+        en : 'Download',
+        es : 'Descarga',
+    },
+    'download.all' : {
+        ca : 'Descarrega tot',
+        en : 'Download all',
+        es : 'Descarga todo',
+    },
 
     /* Vincles */
     'link.gohome' : {

@@ -16,13 +16,15 @@ const getImageElement = ( img, getThumb = false ) => {
     return getImage(main)
 }
 
-const ImageSlider = ({ paint, displayHorizontally = false}) => {
+const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
     const {image_alt_text, main, otherImages} = paint
     const [selectedImage, setSelectedImage] = useState(main);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalImageStyle, setModalImageStyle] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [buttonSimulated, setButtonSimulated] = useState('');
+
+    const gatsbyImageStyle = {"viewTransitionName" : reference + "-paint"}
     
     let images = [ main, ...otherImages ]
     images = images.filter((element, index) => {
@@ -220,6 +222,7 @@ const ImageSlider = ({ paint, displayHorizontally = false}) => {
                         onClick={() => onClickImage(showImage)}
                         >
                         <StyledGatsbyImage
+                            style={gatsbyImageStyle}
                             image={showImage}
                             alt={image_alt_text}
                             objectFit="contain"
@@ -496,8 +499,7 @@ const SliderWrapper = styled.div`
 
     &.display-thumbs-horizontally{
         grid-template-areas : 
-        "thumbs-wrapper image-wrapper"
-        "thumbs-wrapper thumbs-wrapper";
+        "thumbs-wrapper image-wrapper";
 
         .image-wrapper{}
         .thumbs-wrapper{

@@ -2,13 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from "react"
 import styled from "styled-components"
 //import domtoimage from "dom-to-image-more";
 import eventBus from "/src/components/communication/EventBus"
+import TranslateText from "/src/components/translate/TranslateText"
 import { getTranslatedText } from "/src/components/translate/TranslateText";
 import Quote from '/src/components/layout/quote/Quote'
 import CarinaSignature from "/src/components/themes/icons/CarinaSignature"
 import { BsInstagram } from 'react-icons/bs'
 import { FiMail } from 'react-icons/fi'
 import { TfiWorld } from "react-icons/tfi";
-import { AiOutlineEye, AiOutlineEyeInvisible, AiOutlineSave } from "react-icons/ai";
+import { AiFillCaretDown, AiFillCaretUp } from "react-icons/ai";
+import { MdCollections, MdOutlineImage } from "react-icons/md";
 
 import "typeface-open-sans"
 import "typeface-josefin-sans"
@@ -58,11 +60,12 @@ const getTitle = (paint, serie) => {
   return paintWL || title || serieWL || serieTitle
 }
 
-const getSubTitle = (paint, serie) => {
+const getSubTitle = (paint, serie, isSerie) => {
   const { subtitle, wallLabel} = (paint || {})
   const { subtitle : serieSubtitle, wallLabel : serieWallLabel } = (serie || {})
   const { subtitle : paintWL } = (wallLabel || {})
   const { subtitle : serieWL } = (serieWallLabel || {})
+
   return paintWL || serieWL || subtitle || serieSubtitle
 }
 
@@ -100,7 +103,7 @@ const getDescription = (paint, serie) => {
   return txt
 }
 
-const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisible=false, imageFileType='png', showQRCode=true}) => {
+const WallLabel = ({paint, serie, serieId, site, isSerie = false, titlePrefix = "", allowToHide = false, initVisible=false, imageFileType='png', showQRCode=true}) => {
     //const data = useStaticQuery(query)
     const domEl = useRef(null)
 
@@ -124,8 +127,8 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
     //const year = (!date instanceof Date ? new Date() : date).Year()
     const year = date
 
-    const wlTitle = getTitle(paint, serie)
-    const wlSubtitle = getSubTitle(paint, serie)
+    const wlTitle = getTitle(paint, serie, isSerie)
+    const wlSubtitle = getSubTitle(paint, serie, isSerie)
     const wlDescription = getDescription(paint, serie)
 
     const saveWallLabelAsImage = useCallback(async(data) => {
@@ -160,18 +163,24 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
       if(!d2i[callFunction])
         return;
 
-      d2i[callFunction](domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
-          const link = document.createElement('a');
-          link.download = (reference || pageName || id) + "-wall-label."+extension;
-          link.href = dataUrl;
-          link.click();
-          setTimeout(function(){
-            setIsDownloading(false)
-          },1000)
-        }).catch((err) => {
-          console.log(err);
-        });
-    },[ isDownloading, domtoimage, id, pageName, reference, imageFileType])
+      // Apliquem un retard per assegurar que està tot obert i sense animacions pendents
+      setTimeout(function(){
+        d2i[callFunction](domEl.current, { cacheBust : true, preferredFontFormat: "ttf" }).then(function (dataUrl) {
+            const link = document.createElement('a');
+
+            const name = (isSerie? (reference || pageName || serieId) : (reference || pageName) )
+
+            link.download = (name || id) + "-wall-label."+extension;
+            link.href = dataUrl;
+            link.click();
+            setTimeout(function(){
+              setIsDownloading(false)
+            },1000)
+          }).catch((err) => {
+            console.log(err);
+          });
+      },1000);
+    },[ isDownloading, isSerie, domtoimage, id, pageName, reference, serieId, imageFileType])
 
     useEffect(() => {
       if (!initialized) {
@@ -209,91 +218,98 @@ const WallLabel = ({paint, serie, serieId, site, allowToHide = false, initVisibl
     return (
       <WallLabelRoot>
         {allowToHide &&
-            <WallLabelPaintTitle>
-              <StyledEyeIcon
-                onClick={() => toggleVisiblePaint()}>
+            <WallLabelPaintTitle
+              onClick={() => toggleVisiblePaint()}>
+              <WallLabelPaintTitleClickable>
+                {isSerie && <StyledMdCollections />}
+                {!isSerie && <StyledMdOutlineImage />}
+                {titlePrefix}
+                <i> "{title}"</i>
+              </WallLabelPaintTitleClickable>
+
+              <StyledDropdownIcon>
                 {paintVisible && 
-                  <AiOutlineEye />
+                  <AiFillCaretUp />
                 }
                 {!paintVisible && 
-                  <AiOutlineEyeInvisible />
+                  <AiFillCaretDown />
                 }
-              </StyledEyeIcon>
-              <WallLabelPaintTitleClickable
-                onClick={() => toggleVisiblePaint()}
-                >
-                {title}
-              </WallLabelPaintTitleClickable>
-              {paintVisible && 
-                <StyledSaveIcon
-                  onClick={() => saveWallLabelAsImage()}>
-                  <AiOutlineSave />
-                </StyledSaveIcon>
-              }
+              </StyledDropdownIcon>
             </WallLabelPaintTitle>
           }
         <WallLabelWrapper
             className={(!allowToHide || paintVisible) ? 'is-visible' : 'is-not-visible'}>
-          <WallLabelContainer
-            ref={domEl}>
-              <ContentBlock>
-                <TitlesBlock>
-                  <TitlesWrapper>
-                    {(wlSubtitle) &&
-                      <PaintSubTitleContainer>{wlSubtitle}</PaintSubTitleContainer>
+            
+          <WallLabelActionsWrapper>
+            <WLActionElement
+              onClick={() => saveWallLabelAsImage()}
+              ><TranslateText text='Download' /></WLActionElement>
+          </WallLabelActionsWrapper>
+          
+          <WallLabelElementContainerWrapper>
+            <WallLabelElementContainer>
+              <WallLabelContainer
+                ref={domEl}>
+                  <ContentBlock>
+                    <TitlesBlock>
+                      <TitlesWrapper>
+                        {(wlSubtitle) &&
+                          <PaintSubTitleContainer>{wlSubtitle}</PaintSubTitleContainer>
+                        }
+                        <PaintTitleContainer
+                        >{wlTitle}</PaintTitleContainer>
+                      </TitlesWrapper>
+                      <AuthorContainer>{author}</AuthorContainer>
+                      {year &&
+                        <PaintYearContainer>{year}</PaintYearContainer>
+                      }
+
+                      {wlDescription &&
+                        <PaintDescription dangerouslySetInnerHTML={{__html:wlDescription}} />
+                      }
+                    </TitlesBlock>
+
+                    {quote && quote.text && 
+                      <QuoteWrapper
+                        className={quote.text.length > 200 ? 'apply-smaller-text' : ''}>
+                        <Quote quote={quote} showLeftIcon={true} showRightIcon={true} />
+                      </QuoteWrapper>
                     }
-                    <PaintTitleContainer
-                    >{wlTitle}</PaintTitleContainer>
-                  </TitlesWrapper>
-                  <AuthorContainer>{author}</AuthorContainer>
-                  {year &&
-                    <PaintYearContainer>{year}</PaintYearContainer>
+
+                    {showQRCode && qrCode &&
+                      <QRCodeContainer>
+                        <img src={qrCode} alt={title} />
+                      </QRCodeContainer>
+                    }
+
+                    
+                  </ContentBlock>
+                  
+                  <LogoContainer className="logo-container">
+                    <CarinaSignature />
+                  </LogoContainer>
+                  
+                  { productState !== 'Sold' && showPrice && 
+                      <PriceBlock>
+                        {priceEur}€
+                      </PriceBlock>
                   }
-
-                  {wlDescription &&
-                    <PaintDescription dangerouslySetInnerHTML={{__html:wlDescription}} />
-                  }
-                </TitlesBlock>
-
-                {quote && quote.text && 
-                  <QuoteWrapper
-                    className={quote.text.length > 200 ? 'apply-smaller-text' : ''}>
-                    <Quote quote={quote} showLeftIcon={true} showRightIcon={true} />
-                  </QuoteWrapper>
-                }
-
-                {showQRCode && qrCode &&
-                  <QRCodeContainer>
-                    <img src={qrCode} alt={title} />
-                  </QRCodeContainer>
-                 }
-
-                
-              </ContentBlock>
-              
-              <LogoContainer className="logo-container">
-                <CarinaSignature />
-              </LogoContainer>
-              
-              { productState !== 'Sold' && showPrice && 
-                  <PriceBlock>
-                    {priceEur}€
-                  </PriceBlock>
-              }
-              <SocialContainer>
-                  <SocialMediaList>
-                  <SocialMediaElement>
-                      <span className='socialmedia-element'><StyledIcon className='sm-icon'><BsInstagram /></StyledIcon><span className='socialmedia-text'>@carina.miras.art</span></span>
-                    </SocialMediaElement>
-                    <SocialMediaElement>
-                      <span className='socialmedia-element sm-remark'><StyledIcon className='sm-icon'><TfiWorld /></StyledIcon><span className='socialmedia-text'>www.carinamiras.art</span></span>
-                    </SocialMediaElement>
-                    <SocialMediaElement>
-                      <span className='socialmedia-element'><StyledIcon className='sm-icon'><FiMail /></StyledIcon><span className='socialmedia-text'>hi@carinamiras.art</span></span>
-                    </SocialMediaElement>
-                  </SocialMediaList>
-              </SocialContainer>
-          </WallLabelContainer>
+                  <SocialContainer>
+                      <SocialMediaList>
+                      <SocialMediaElement>
+                          <span className='socialmedia-element'><StyledIcon className='sm-icon'><BsInstagram /></StyledIcon><span className='socialmedia-text'>@carina.miras.art</span></span>
+                        </SocialMediaElement>
+                        <SocialMediaElement>
+                          <span className='socialmedia-element sm-remark'><StyledIcon className='sm-icon'><TfiWorld /></StyledIcon><span className='socialmedia-text'>www.carinamiras.art</span></span>
+                        </SocialMediaElement>
+                        <SocialMediaElement>
+                          <span className='socialmedia-element'><StyledIcon className='sm-icon'><FiMail /></StyledIcon><span className='socialmedia-text'>hi@carinamiras.art</span></span>
+                        </SocialMediaElement>
+                      </SocialMediaList>
+                  </SocialContainer>
+              </WallLabelContainer>
+            </WallLabelElementContainer>
+            </WallLabelElementContainerWrapper>
         </WallLabelWrapper>
       </WallLabelRoot>
     )
@@ -324,6 +340,17 @@ const WallLabelRoot = styled.article`
 
 `
 const WallLabelWrapper = styled.div`
+  &.is-not-visible{
+    display:none;
+  }
+`
+
+const WallLabelElementContainerWrapper = styled.div`
+  overflow:auto;
+  padding:0.5em;
+  border:1px solid #ccc;
+`
+const WallLabelElementContainer = styled.div`
   display:flex;
   justify-content: center;
   flex-direction: row;
@@ -332,14 +359,17 @@ const WallLabelWrapper = styled.div`
   width:100%;
   margin:auto;
   position:relative;
-
-  &.is-not-visible{
-    display:none;
-  }
 `
 
 const WallLabelPaintTitle = styled.h3`
   cursor: pointer;
+  display:grid;
+  grid-template-columns: 1fr 50px;
+
+  transition:color 0.5s ease;
+  :hover{
+    color : var(--primary-link-hover-color);
+  }
 
   @media print {
     display:none;
@@ -348,15 +378,37 @@ const WallLabelPaintTitle = styled.h3`
 
 const WallLabelPaintTitleClickable = styled.a`
   text-decoration: none;
+  align-content:center;
 `
 
-const StyledEyeIcon = styled.div`
-  display:inline-block;
-  margin-right: 10px;
+const StyledMdCollections = styled(MdCollections)`
+  margin-right: 0.5em;
 `
-const StyledSaveIcon = styled.div`
+const StyledMdOutlineImage = styled(MdOutlineImage)`
+  margin-right: 0.5em;
+`
+
+const StyledDropdownIcon = styled.div`
+  text-align:center;
+  align-content:center;
+`
+
+const WallLabelActionsWrapper = styled.div`
+  width:100%;
+  text-align:center;
+`
+
+const WLActionElement = styled.span`
   display:inline-block;
-  float:right;
+  position:relative;
+  padding: 0 1em;
+  color: var(--primary-link-color);
+  transition: all 0.2s ease-in;
+  cursor: pointer;
+
+  :hover{
+    color : var(--primary-link-hover-color);
+  }
 `
 
 const WallLabelContainer = styled.div`

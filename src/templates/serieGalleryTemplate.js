@@ -168,6 +168,7 @@ query GalleryTemplate($serie: String!) {
     nodes {
       id
       url
+      reference
       title
       image {
         main {
