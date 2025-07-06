@@ -5,7 +5,8 @@
 # En cas de no tenir-ne, executar:
 # "chmod +x deploy.sh"
 # -> Si es vol executar des del Visual Studio Code, 
-#     obrir un terminal del tipus bash
+#     obrir un terminal del tipus bash (Git Bash, per exemple)
+#       ./deploy.sh --env prod
 # -> Per veure el progrés, mirar al fitxer de logs
 
 # -----------------------------------------------------------
@@ -194,22 +195,34 @@ then
   ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Executant build de Gatsby..."
   BUILD_START=$SECONDS
   gatsby build >> $LOGFILE
+  if [ $? -eq 0 ]
+  then
+    echo "|--> Build executat amb èxit" >> $LOGFILE
+    ERROR="0"
+  else 
+    echo "|--> Build executat SENSE èxit" >> $LOGFILE
+    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Error al generar el build"
+    ERROR="1"
+  fi
   BUILD_ENDS=$SECONDS
 else
   echo "|- Procés definit sense l'executació del build de Gatsby" >> $LOGFILE
 fi
 
-# Comprovar si s’ha generat la carpeta
-if [ -d $LOCAL_PATH ] 
-then
-  TEMPS_BUILD=$(($BUILD_ENDS-$BUILD_START))
-  echo "|--> Build generat amb èxit ($TEMPS_BUILD segons)." >> $LOGFILE
-  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Build generat correctament ($TEMPS_BUILD segons)"
-  ERROR="0"
-else
-  echo "|--> ERROR: el build no s'ha realitzat correctament" >> $LOGFILE
-  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al fer el build de Gatsby"
-  ERROR="1"
+# Si s'ha executat el build correctament, comprovar si s’ha generat la carpeta
+if [ $ERROR -eq "0" ]
+then 
+  if [ -d $LOCAL_PATH ] 
+  then
+    TEMPS_BUILD=$(($BUILD_ENDS-$BUILD_START))
+    echo "|--> Carpeta del build generada amb èxit ($TEMPS_BUILD segons)." >> $LOGFILE
+    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Build generat correctament ($TEMPS_BUILD segons)"
+    ERROR="0"
+  else
+    echo "|--> ERROR: el build no s'ha realitzat correctament" >> $LOGFILE
+    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al fer el build de Gatsby"
+    ERROR="1"
+  fi
 fi
 
 if [ $ERROR -eq "0" ]
@@ -349,7 +362,8 @@ then
   MINUTS_TOTALS=$(($TEMPS_TOTAL / 60))
   SEGONS_TOTALS=$(($TEMPS_TOTAL - ($MINUTS_TOTALS * 60)))
   DECIMALS_MINUTS_TOTALS=$(( $SEGONS_TOTALS * 100 / 60  ))
-  echo "---- El desplegament s’ha fet correctament en $MINUTS_TOTALS,$DECIMALS_MINUTS_TOTALS minuts." >> $LOGFILE
+  
+  echo "---- El desplegament s’ha fet correctament en $MINUTS_TOTALS m ($TEMPS_TOTAL s)." >> $LOGFILE
   PREFIX="www"
   if [ $ENVIRONMENT == "TEST" ]
   then
