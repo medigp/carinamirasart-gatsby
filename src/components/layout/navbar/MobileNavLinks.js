@@ -67,6 +67,8 @@ const LinksWrapper = styled.ul`
     padding:0;
     display:flex;
     height: 100%;
+    height: calc(100% - var(--header-height));
+    overflow: auto;
     list-style:none;
     width:100%;
     flex-direction: column;
