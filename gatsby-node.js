@@ -26,6 +26,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            links: [ LinkData ]
             wallLabel : WallLabelData
             body: String
             lastModificationDate: Date @dateformat
@@ -49,6 +50,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             quote : Quote
             description : String
+            links: [ LinkData ]
             wallLabel : WallLabelData
             body: String
             lastModificationDate: Date @dateformat
@@ -156,11 +158,14 @@ exports.createSchemaCustomization = ({ actions }) => {
         type Paragraph {
             title : String
             subtitle : String
-            text : String!
+            text : String
             sortText : String
             image : File @fileByRelativePath
             author : String
             authorTitle : String
+            date: Date @dateformat
+            link : String
+            links: [ LinkData ]
         }
 
         type BreadCrumb {
@@ -180,6 +185,13 @@ exports.createSchemaCustomization = ({ actions }) => {
             otherImages : [ File ] @fileByRelativePath
         }
 
+        type LinkData {
+            title: String
+            media: String
+            link : String
+            image : File @fileByRelativePath
+        }
+    
         type ClassificationData {
             serie: String
             category : CategoryClassificationEnum
@@ -706,6 +718,7 @@ const getParagraphsObjectByNode = (node) => {
 const getParagraphObject = (paragraph, index) => {
     if(!paragraph)
         return null;
+    //console.log("paragraph", paragraph);
     let p = paragraph;
     if(!p.sortText){
         let indexText = String(index).padStart(4,'0')

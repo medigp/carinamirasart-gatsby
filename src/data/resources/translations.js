@@ -45,7 +45,11 @@ export const Translation = {
         en : 'Reviews',
         es : 'Reseñas'
     },
-    
+    'press' : {
+        ca : 'Premsa',
+        en : 'Prensa',
+        es : 'Press'
+    },
     /* Landing Page */
     'landingpage.seo.description' : {
         ca : 'Carina Miras és una artista visual especialitzada en treball abstracte',
@@ -163,6 +167,23 @@ export const Translation = {
         ca : 'Ressenyes sobre Carina Miras com a artista visual',
         en : 'Reviews about Carina Miras as a visual artist',
         es : 'Reseñas de Carina Miras como artista visual'
+    },
+
+    /* Press */
+    'press.title' : {
+        ca : 'Premsa',
+        en : 'Press',
+        es : 'Prensa'
+    },
+    'press.subtitle' : {
+        ca : 'Recull de premsa',
+        en : 'press',
+        es : 'Prensa'
+    },
+    'press.seo.description' : {
+        ca : 'Vincles de premsa sobre Carina Miras com a artista visual',
+        en : 'Press about Carina Miras as a visual artist',
+        es : 'Premsa de Carina Miras como artista visual'
     },
 
     /* 404 */
