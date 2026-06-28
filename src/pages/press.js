@@ -64,7 +64,6 @@ const Press = ({data}) => {
     }; 
 
     const getParagraph = (paragraph, index) => {
-      console.log("getParagraph",paragraph, index);
       if(!paragraph)
         return "";
 
