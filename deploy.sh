@@ -17,6 +17,7 @@
 #
 # Requisits:
 #   - Node/npm instal·lats (node v22)
+#       - Si no funciona, des de PowerShell definim que es faci servir node 22: "nvm use 22.12.0"
 #   - Wrangler autenticat prèviament: npx.cmd wrangler login
 #   - Projecte de Cloudflare Pages existent: carinamiras-art
 #   - La carpeta generada pel build ha d'existir, normalment: public
