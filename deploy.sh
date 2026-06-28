@@ -341,5 +341,5 @@ log "---- URL: $FINAL_URL"
 log "---------------------------------------------------------------"
 log ""
 
-send_telegram "[CarinaMirasArt] $ENVIRONMENT | Deploy completat | Temps: $(format_seconds "$TEMPS_TOTAL") | URL: $FINAL_URL"
+send_telegram "[CarinaMirasArt] $ENVIRONMENT | Deploy completat | Temps: $(format_seconds "$TEMPS_TOTAL")"
 send_telegram "[CarinaMirasArt] $ENVIRONMENT | Web desplegada correctament | $FINAL_URL"
