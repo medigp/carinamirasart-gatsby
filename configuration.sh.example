@@ -1,15 +1,40 @@
 #!/usr/bin/env bash
 
-IP="172.0.0.1"
-PORT="8080"
-USERNAME="root"
+# -----------------------------------------------------------
+# Configuració per desplegar CarinaMiras.art a Cloudflare Pages
+# -----------------------------------------------------------
 
-DEFINED_SUBDOMAINS=("test" "admin")
+# Projecte local
+# Amb la versió actual del deploy-cloudflare-pages.sh,
+# aquesta variable queda només com a referència.
+# L'script l'has d'executar des de l'arrel del projecte Gatsby.
+WINDOWS_PATH="C:/projects/carina-miras-gatsby"
+NODE_BIN_DIR="/c/nvm4w/nodejs"
 
-SERVER_PATH="host_domain/public_html"
-TEMP_FOLDER=".temp"
-
-WINDOWS_PATH="C:/projects/project-name"
+# Carpeta generada per Gatsby després del build
 LOCAL_PATH="public"
 
-LOGFILE="deploy_example.txt"
+# Fitxer de log
+LOGFILE="deploy_log.txt"
+
+# Cloudflare Pages
+CLOUDFLARE_PROJECT_NAME="carinamiras-art"
+PRODUCTION_BRANCH="main"
+
+# Validacions de seguretat abans del deploy
+MIN_FILES_TO_DEPLOY=1000
+MAX_FILES_FREE_PLAN=20000
+MAX_FILE_SIZE_MB=25
+
+# Ordres de build
+# En Windows/Git Bash acostuma a ser més robust usar npx.cmd.
+# Si tens diversos Node instal·lats, pots fixar el Node del projecte així:
+# NODE_BIN_DIR="/c/Users/usuari/AppData/Local/nvm/v22.12.0"
+GATSBY_CLEAN_CMD="npx.cmd gatsby clean"
+GATSBY_BUILD_CMD="npx.cmd gatsby build"
+
+# Telegram, opcional
+# Pots mantenir els teus valors actuals aquí,
+# però no els comparteixis ni els pugis a cap repositori.
+TELEGRAM_CHAT_ID="-100xxxxxxxx"
+TELEGRAM_BOT_TOKEN_ID="posa_aqui_el_token_real"

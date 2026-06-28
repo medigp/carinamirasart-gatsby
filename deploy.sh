@@ -1,383 +1,345 @@
 #!/bin/bash
 
-# Aquest arxiu va a la mateixa carpeta que el projecte
-# i ha de tenir permisos d’execució. 
-# En cas de no tenir-ne, executar:
-# "chmod +x deploy.sh"
-# -> Si es vol executar des del Visual Studio Code, 
-#     obrir un terminal del tipus bash (Git Bash, per exemple)
-#       ./deploy.sh --env prod
-# -> Per veure el progrés, mirar al fitxer de logs
+# Deploy de CarinaMiras.art a Cloudflare Pages
+# Aquest arxiu substitueix el flux antic basat en FTP/SSH/Hostinger.
+#
+# Ús habitual:
+#   ./deploy.sh --env prod
+#   ./deploy.sh --env test
+#   ./deploy.sh --env prod --no-local-clean
+#   ./deploy.sh --env prod --no-build
+#
+# Ús test:
+#   pujant el que hi ha compilat:
+#     ./deploy.sh --env test --no-build --no-local-clean
+#   fent tot el procés:
+#     ./deploy.sh --env test
+#
+# Requisits:
+#   - Node/npm instal·lats (node v22)
+#   - Wrangler autenticat prèviament: npx.cmd wrangler login
+#   - Projecte de Cloudflare Pages existent: carinamiras-art
+#   - La carpeta generada pel build ha d'existir, normalment: public
+
+set -Eeuo pipefail
 
 # -----------------------------------------------------------
-# -----------------------------------------------------------
-# -----------------------------------------------------------
-# ---- Inicialització de les variables
+# Configuració base
 # -----------------------------------------------------------
 
-source configuration.sh
+# Manté compatibilitat amb el teu sistema actual de configuració.
+# Ja no necessitem PORT, IP, SERVER_PATH, TEMP_FOLDER, etc.
+if [ -f "configuration.sh" ]; then
+  # shellcheck disable=SC1091
+  source configuration.sh
+fi
+
+if [ -n "${NODE_BIN_DIR:-}" ]; then
+  export PATH="$NODE_BIN_DIR:$PATH"
+fi
 
 CURRENT_DATE=$(date +%Y-%m-%d_%H:%M)
 START_PROCESS_DATE=$SECONDS
-ERROR="0"
 
-if [[ -z ${PORT} ]] || [[ -z ${IP} ]] || [[ -z ${SERVER_PATH} ]]
-then
-  #aquí error perquè hi ha alguna cosa no definida!
-  echo "ERROR DE CONFIGURACIÓ" >> "deploy_log.txt"
-  echo "Les variables de connexió no estan definides" >> "deploy_log.txt"
-  exit
-fi
+LOGFILE=${LOGFILE:-deploy_log.txt}
+LOCAL_PATH=${LOCAL_PATH:-public}
+CLOUDFLARE_PROJECT_NAME=${CLOUDFLARE_PROJECT_NAME:-carinamiras-art}
+PRODUCTION_BRANCH=${PRODUCTION_BRANCH:-main}
+MIN_FILES_TO_DEPLOY=${MIN_FILES_TO_DEPLOY:-50}
+MAX_FILES_FREE_PLAN=${MAX_FILES_FREE_PLAN:-20000}
+MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-25}
+MAX_NODE_MAJOR_FOR_GATSBY_BUILD=${MAX_NODE_MAJOR_FOR_GATSBY_BUILD:-22}
 
-Help()
-{
-  echo "Arguments:"
-  echo "  --env               Definir l'environment (producció, test, develop, admin...)"
-  echo "  --no-build          Evita fer el build en local de gatsby"
-  echo "  --no-clean          Evita fer el clean en local del codi"
-  echo "  --no-clean-server   Evita fer el build de gatsby"
-}
+# Pots sobreescriure aquestes ordres a configuration.sh si vols:
+#   GATSBY_CLEAN_CMD="npm run clean"
+#   GATSBY_BUILD_CMD="npm run build"
+GATSBY_CLEAN_CMD=${GATSBY_CLEAN_CMD:-"gatsby clean"}
+GATSBY_BUILD_CMD=${GATSBY_BUILD_CMD:-"gatsby build"}
 
 ENVIRONMENT="TEST"
-SUBDOMAIN="test"
 ARG_CLEAN="S"
-ARG_CLEAN_SERVER="S"
 ARG_BUILD="S"
+CUSTOM_BRANCH=""
 
-VALID_ARGS=$(getopt -o h --long h,help,env:,subdomain:,no-local-clean,no-build,no-server-clean -- "$@")
-if [[ ! -z $VALID_ARGS ]]
-then
-  eval set "$VALID_ARGS"
-  i=1
-  while [ "$i" -le "$#" ]; do
-    eval "arg=\${$i}"
-    if [ $arg != "--" ]
-    then
-    case "$arg" in
-      --h | --help) Help  >> $LOGFILE; exit;;
-      --env) eval "arg2=\${$((i+1))}";
-            [ $arg2 != "" ] && ENVIRONMENT=$arg2
-        ;;
-      --subdomain) eval "arg2=\${$((i+1))}";
-            [ $arg2 != "" ] && SUBDOMAIN=$arg2
-        ;;
-      --no-local-clean) ARG_CLEAN="N"
-        ;;
-      --no-server-clean) ARG_CLEAN_SERVER="N"
-        ;;
-      --no-build)  ARG_BUILD="N"
-        ;;
-    esac
-    fi
-    i=$((i + 1))
-  done
-fi
+# -----------------------------------------------------------
+# Funcions auxiliars
+# -----------------------------------------------------------
 
-[ $ENVIRONMENT == "" ] && ENVIRONMENT="test"
-ENVIRONMENT=${ENVIRONMENT^^} 
-SUBDOMAIN=${ENVIRONMENT,,}
-[ $SUBDOMAIN == "prod" ] && SUBDOMAIN=""
+Help() {
+  echo "Arguments:"
+  echo "  --env <prod|test|develop>     Defineix l'entorn del deploy"
+  echo "  --branch <branch>             Força una branch concreta de Cloudflare Pages"
+  echo "  --build-dir <path>            Carpeta final a desplegar. Per defecte: public o LOCAL_PATH"
+  echo "  --no-local-clean              Evita executar el clean local de Gatsby"
+  echo "  --no-build                    Evita fer el build local de Gatsby"
+  echo "  --no-server-clean             Acceptat per compatibilitat, però ja no fa res"
+  echo "  -h, --help                    Mostra aquesta ajuda"
+}
 
-EXPECTED_TIME=0
-if [ $ARG_CLEAN == "S" ]
-then
-  # Si NO s'ha definit el "no-clean", s'ha de fer el clean
-  # Això implica fer el clean en local, fer el build i fer el clean al servidor
-  CLEAN="S"
-  CLEAN_SERVER="S"
-  EXECUTE_BUILD="S"
+log() {
+  echo "$1" | tee -a "$LOGFILE"
+}
+
+send_telegram() {
+  if [ -x "./telegram-send.sh" ]; then
+    ./telegram-send.sh "$1" >/dev/null 2>&1 || true
+  fi
+}
+
+fail() {
+  log "|--> ERROR: $1"
+  send_telegram "[CarinaMirasArt] $ENVIRONMENT | ERROR | $1"
+  exit 1
+}
+
+get_npx_command() {
+  case "${OSTYPE:-}" in
+    msys*|cygwin*|win32*) echo "npx.cmd" ;;
+    *)
+      if command -v npx.cmd >/dev/null 2>&1; then
+        echo "npx.cmd"
+      else
+        echo "npx"
+      fi
+      ;;
+  esac
+}
+
+check_wrangler() {
+  log "- Comprovant Wrangler..."
+
+  if ! command -v "$NPX_CMD" >/dev/null 2>&1; then
+    fail "No s'ha trobat $NPX_CMD. Instal·la Node/npm o revisa la configuració local."
+  fi
+
+  if ! "$NPX_CMD" wrangler --version >> "$LOGFILE" 2>&1; then
+    fail "Wrangler no està disponible. Instal·la'l amb: npm install --save-dev wrangler"
+  fi
+
+  if ! "$NPX_CMD" wrangler whoami >> "$LOGFILE" 2>&1; then
+    fail "Wrangler no està autenticat. Executa: $NPX_CMD wrangler login"
+  fi
+
+  log "|--> Wrangler disponible i autenticat."
+}
+
+check_node_for_build() {
+  [ "$ARG_BUILD" = "S" ] || return 0
+
+  log "- Comprovant versió de Node per al build..."
+
+  local node_version
+  local node_major
+  node_version=$(node -v 2>/dev/null || true)
+  node_major=${node_version#v}
+  node_major=${node_major%%.*}
+
+  if [ -z "$node_version" ] || [ -z "$node_major" ]; then
+    fail "No s'ha pogut detectar Node. Revisa la instal·lació abans de fer el build."
+  fi
+
+  log "|--> Node detectat: $node_version"
+
+  if [ "$node_major" -gt "$MAX_NODE_MAJOR_FOR_GATSBY_BUILD" ]; then
+    fail "Gatsby 5.7 no es compatible amb Node $node_version en aquest projecte. Usa Node 18, 20 o 22 per fer el build."
+  fi
+}
+
+format_seconds() {
+  local total=$1
+  local minuts=$((total / 60))
+  local segons=$((total - (minuts * 60)))
+  echo "${minuts}m ${segons}s"
+}
+
+# -----------------------------------------------------------
+# Arguments
+# -----------------------------------------------------------
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      Help
+      exit 0
+      ;;
+    --env)
+      [ $# -lt 2 ] && fail "Falta valor per --env"
+      ENVIRONMENT="$2"
+      shift 2
+      ;;
+    --branch)
+      [ $# -lt 2 ] && fail "Falta valor per --branch"
+      CUSTOM_BRANCH="$2"
+      shift 2
+      ;;
+    --build-dir)
+      [ $# -lt 2 ] && fail "Falta valor per --build-dir"
+      LOCAL_PATH="$2"
+      shift 2
+      ;;
+    --no-local-clean|--no-clean)
+      ARG_CLEAN="N"
+      shift
+      ;;
+    --no-build)
+      ARG_BUILD="N"
+      shift
+      ;;
+    --no-server-clean)
+      # Abans servia per no netejar Hostinger. Ara ja no cal.
+      shift
+      ;;
+    *)
+      fail "Argument desconegut: $1"
+      ;;
+  esac
+done
+
+ENVIRONMENT=${ENVIRONMENT^^}
+ENVIRONMENT_LOWER=${ENVIRONMENT,,}
+
+if [ -n "$CUSTOM_BRANCH" ]; then
+  CLOUDFLARE_BRANCH="$CUSTOM_BRANCH"
+elif [ "$ENVIRONMENT_LOWER" = "prod" ] || [ "$ENVIRONMENT_LOWER" = "production" ]; then
+  CLOUDFLARE_BRANCH="$PRODUCTION_BRANCH"
 else
-  # Sinó... No fem el clean en local
-  CLEAN="N"
-
-  # Els altres segons els arguments
-  if [ $ARG_BUILD == "N" ]
-  then
-    # Si s'ha definit el "no-build", NO es farà el build
-    EXECUTE_BUILD="N"
-  fi 
-
-  if [ $ARG_CLEAN_SERVER == "N" ]
-  then
-    # Si s'ha definit el "no-clean-server", NO es farà el clean del server
-    CLEAN_SERVER="N"
-  fi 
+  CLOUDFLARE_BRANCH="$ENVIRONMENT_LOWER"
 fi
 
-# Últimes execucions (en segons): 1739s
-
-CLEAN_AVG_TIME=4                  # 5
-BUILD_AVG_TIME=720                # 743   (12 minuts)
-UPLOAD_AVG_TIME=1080              # 1107  (18 minuts)
-CLEAN_SERVER_AVG_TIME=1           # 
-FILES_TO_REAL_AVG_TIME=1          # 
-DELETE_TEMP_FILES_AVG_TIME=2      # 4
-
-#clean
-[ $CLEAN == "S" ] && EXPECTED_TIME=$(( $EXPECTED_TIME + $CLEAN_AVG_TIME ))
-#build
-[ $EXECUTE_BUILD == "S" ] && EXPECTED_TIME=$(( $EXPECTED_TIME + $BUILD_AVG_TIME ))
-#upload
-EXPECTED_TIME=$(( $EXPECTED_TIME + $UPLOAD_AVG_TIME ))
-#eliminar contingut del server
-[ $CLEAN_SERVER == "S" ] && EXPECTED_TIME=$(( $EXPECTED_TIME + $CLEAN_SERVER_AVG_TIME ))
-
-#desplegar contingut
-EXPECTED_TIME=$(( $EXPECTED_TIME + $FILES_TO_REAL_AVG_TIME ))
-#eliminar contingut de la carpeta temporal
-EXPECTED_TIME=$(( $EXPECTED_TIME + $DELETE_TEMP_FILES_AVG_TIME ))
-
-# Ajustem el path del server per si són subdominis
-[ ! -z $SUBDOMAIN ] && SERVER_PATH="$SERVER_PATH/$SUBDOMAIN"
-
-# Es genera l'expressió per excloure eliminacions
-# Exclusions genèriques
-PATH_EXCLUSIONS=(".temp" "maintenance")
-FILE_EXCLUSIONS=(".htaccess" ".htaccess_disabled")
-
-# Exclusions per configuració (subdominis definits a configuration.sh)
-[ -n $DEFINED_SUBDOMAINS ] && PATH_EXCLUSIONS=(${PATH_EXCLUSIONS[@]} ${DEFINED_SUBDOMAINS[@]})
-
-DELETE_EXCLUSIONS=""
-ADD_A=""
-if [ -n $PATH_EXCLUSIONS ]
-then
-  for elem in ${PATH_EXCLUSIONS[@]}
-  do
-    [ $ADD_A != "" ] && DELETE_EXCLUSIONS+=" -a "
-    DELETE_EXCLUSIONS+="! -path '$SERVER_PATH/$elem*'"
-    ADD_A="S"
-  done
-fi
-
-if [ -n $FILE_EXCLUSIONS ]
-then
-  for elem in ${FILE_EXCLUSIONS[@]}
-  do
-    [ $ADD_A != "" ] && DELETE_EXCLUSIONS+=' -a '
-    DELETE_EXCLUSIONS+="! -name '$elem'"
-    ADD_A="S"
-  done
-fi
+NPX_CMD=$(get_npx_command)
 
 # -----------------------------------------------------------
+# Inici del procés
 # -----------------------------------------------------------
-# -----------------------------------------------------------
-# ---- Iniciar l’script
-# -----------------------------------------------------------
-echo "---------------------------------------------------------------"  >> $LOGFILE
-echo "---- Execució del procés de deploy de CarinaMiras.art" >> $LOGFILE
-echo "---- -> Desplegament a $ENVIRONMENT ($SERVER_PATH)" >> $LOGFILE
-echo "---- -> Temps esperat aproximat: $EXPECTED_TIME segons" >> $LOGFILE
-echo "---- -> Data de realització: $CURRENT_DATE" >> $LOGFILE
-echo "---------------------------------------------------------------"  >> $LOGFILE
 
-./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): Iniciant deploy..."
+log "---------------------------------------------------------------"
+log "---- Execució del deploy de CarinaMiras.art a Cloudflare Pages"
+log "---- -> Entorn: $ENVIRONMENT"
+log "---- -> Projecte Pages: $CLOUDFLARE_PROJECT_NAME"
+log "---- -> Branch Pages: $CLOUDFLARE_BRANCH"
+log "---- -> Carpeta a desplegar: $LOCAL_PATH"
+log "---- -> Data de realització: $CURRENT_DATE"
+log "---------------------------------------------------------------"
 
-echo "- Inici del procés de deploy" >> $LOGFILE
-if [ $CLEAN == "S" ]
-then
-  echo "- Inicialitzant el clean del projecte en local..." >> $LOGFILE
-  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Executant clean de Gatsby..."
-  
+send_telegram "[CarinaMirasArt] $ENVIRONMENT | Iniciant deploy a Cloudflare Pages | Branch: $CLOUDFLARE_BRANCH"
+
+# -----------------------------------------------------------
+# Wrangler
+# -----------------------------------------------------------
+
+check_wrangler
+check_node_for_build
+
+# -----------------------------------------------------------
+# Clean local
+# -----------------------------------------------------------
+
+if [ "$ARG_CLEAN" = "S" ]; then
+  log "- Executant clean local..."
+  send_telegram "[CarinaMirasArt] $ENVIRONMENT | Clean local de Gatsby en curs"
+
   CLEAN_START=$SECONDS
-  gatsby clean
-  CLEAN_ENDS=$SECONDS
-  echo "|--> Clean executat amb èxit ($(($CLEAN_ENDS-$CLEAN_START)) segons)." >> $LOGFILE
-else
-  echo "- Procés definit sense l'execució del clean del projecte local" >> $LOGFILE
-fi
-
-# Executar build de Gatsby
-if [ $EXECUTE_BUILD == "S" ]
-then
-  echo "- Executant build de Gatsby..." >> $LOGFILE
-  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Executant build de Gatsby..."
-  BUILD_START=$SECONDS
-  gatsby build >> $LOGFILE
-  if [ $? -eq 0 ]
-  then
-    echo "|--> Build executat amb èxit" >> $LOGFILE
-    ERROR="0"
-  else 
-    echo "|--> Build executat SENSE èxit" >> $LOGFILE
-    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Error al generar el build"
-    ERROR="1"
-  fi
-  BUILD_ENDS=$SECONDS
-else
-  echo "|- Procés definit sense l'executació del build de Gatsby" >> $LOGFILE
-fi
-
-# Si s'ha executat el build correctament, comprovar si s’ha generat la carpeta
-if [ $ERROR -eq "0" ]
-then 
-  if [ -d $LOCAL_PATH ] 
-  then
-    TEMPS_BUILD=$(($BUILD_ENDS-$BUILD_START))
-    echo "|--> Carpeta del build generada amb èxit ($TEMPS_BUILD segons)." >> $LOGFILE
-    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Build generat correctament ($TEMPS_BUILD segons)"
-    ERROR="0"
+  if eval "$GATSBY_CLEAN_CMD" >> "$LOGFILE" 2>&1; then
+    CLEAN_ENDS=$SECONDS
+    log "|--> Clean executat amb èxit ($(format_seconds $((CLEAN_ENDS-CLEAN_START))))."
   else
-    echo "|--> ERROR: el build no s'ha realitzat correctament" >> $LOGFILE
-    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al fer el build de Gatsby"
-    ERROR="1"
+    fail "No s'ha pogut executar el clean local"
   fi
+else
+  log "- Procés definit sense clean local"
 fi
 
-if [ $ERROR -eq "0" ]
-then
-  echo "- Crear la carpeta temporal al servidor" >> $LOGFILE
-  ssh -p $PORT $USERNAME@$IP "mkdir $SERVER_PATH/$TEMP_FOLDER -p" >> $LOGFILE
-  
-  if [ $? -eq 0 ]
-  then
-    echo "|--> Carpeta temporal creada amb èxit" >> $LOGFILE
-  else 
-    echo "|--> ERROR: no s'ha pogut crear la carpeta temporal del servidor (Codi $?)" >> $LOGFILE
-    ERROR="1"
+# -----------------------------------------------------------
+# Build de Gatsby
+# -----------------------------------------------------------
+
+if [ "$ARG_BUILD" = "S" ]; then
+  log "- Executant build de Gatsby..."
+  send_telegram "[CarinaMirasArt] $ENVIRONMENT | Build de Gatsby en curs"
+
+  BUILD_START=$SECONDS
+  if eval "$GATSBY_BUILD_CMD" >> "$LOGFILE" 2>&1; then
+    BUILD_ENDS=$SECONDS
+    log "|--> Build executat amb èxit ($(format_seconds $((BUILD_ENDS-BUILD_START))))."
+    send_telegram "[CarinaMirasArt] $ENVIRONMENT | Build completat | Temps: $(format_seconds $((BUILD_ENDS-BUILD_START)))"
+  else
+    fail "Error generant el build de Gatsby"
   fi
+else
+  log "- Procés definit sense build local"
 fi
 
-if [ $ERROR -eq "0" ]
-then
-  START_UPLOAD=$SECONDS
-  echo "- Copiant arxius a la carpeta temporal del servidor..." >> $LOGFILE
-  ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Inici de la pujada de fitxers al servidor..."
-  # Normalment tarda sobre els 600 segons
-  scp -q -P $PORT -r $WINDOWS_PATH/$LOCAL_PATH/* $USERNAME@$IP:$SERVER_PATH/$TEMP_FOLDER >> $LOGFILE
-  END_UPLOAD=$SECONDS
+# -----------------------------------------------------------
+# Validacions abans del deploy
+# -----------------------------------------------------------
 
-  if [ $? -eq 0 ]
-  then
-    TEMPS_UPLOAD=$(($END_UPLOAD-$START_UPLOAD))
-    echo "|--> Pujada realitzada amb èxit ($TEMPS_UPLOAD segons)" >> $LOGFILE
-    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): Pujada realitzada correctament ($TEMPS_UPLOAD segons)"
-  else 
-    echo "|--> ERROR: no s'ha pogut pujar els arxius a la carpeta temporal del servidor (Codi $?)" >> $LOGFILE
-    ./telegram-send.sh "|--> CarinaMirasArt ($ENVIRONMENT): ERROR al pujar els arxius al servidor"
-    ERROR="1"
-  fi
+log "- Validant carpeta generada..."
+
+[ -d "$LOCAL_PATH" ] || fail "No existeix la carpeta a desplegar: $LOCAL_PATH"
+
+FILE_COUNT=$(find "$LOCAL_PATH" -type f | wc -l | tr -d ' ')
+log "|--> Fitxers detectats a $LOCAL_PATH: $FILE_COUNT"
+
+if [ "$FILE_COUNT" -lt "$MIN_FILES_TO_DEPLOY" ]; then
+  fail "La carpeta $LOCAL_PATH sembla tenir massa pocs fitxers ($FILE_COUNT). Aturo el deploy per seguretat."
 fi
 
-# Conectar per SSH al servidor
-if [ $ERROR -eq "0" ]
-then
-  echo "- Connectant al servidor via SSH..." >> $LOGFILE
-  
-  echo "---------------------------------------------------------------"  >> $LOGFILE
-  ssh -T -p $PORT $USERNAME@$IP << EOF >> $LOGFILE
-  if [ $? -eq 0 ]
-  then
-    echo "|--> La connexió s'ha realitzat correctament"
-  else 
-    echo "|--> ERROR: no s'ha pogut establir la connexió (Codi $?)"
-    ERROR="1"
-  fi
-  
-  if [ $ERROR == "0" ]
-  then
-    echo "- Activant mode manteniment..."
-    mv $SERVER_PATH/.htaccess_disabled $SERVER_PATH/.htaccess
-    if [ $? -eq 0 ]
-    then 
-      echo "|--> Mode manteniment: activat"
-    else
-      echo "|--> ERROR: no s'ha pogut activar el mode manteniment (Codi $?)"
-      ERROR="1"
-    fi
-  fi
-
-  shopt -s extglob
-  if [ $ERROR == "0" ] && [ $CLEAN_SERVER == "S" ]
-  then
-    echo "- Eliminant contingut preexistent..."
-    # Si s'han definit exclusions, s'executa del delete
-    find $SERVER_PATH -mindepth 1 \( $DELETE_EXCLUSIONS \) -delete
-
-    if [ $? -eq 0 ]
-    then 
-      echo "|--> Contingut eliminat correctament"
-    else
-      echo "|--> ERROR: no s'ha pogut eliminar el contingut (Codi $?)"
-      ERROR="1"
-    fi
-  fi
-
-  if [ $ERROR == "0" ]
-  then
-    echo "- Desplegant contingut..."
-    mv -u $SERVER_PATH/$TEMP_FOLDER/* $SERVER_PATH/
-
-    if [ $? -eq 0 ]
-    then 
-      echo "|--> Contingut desplegat correctament"
-    else
-      echo "|--> ERROR: no s'ha pogut desplegar el contingut (Codi $?)"
-      ERROR="1"
-    fi
-  fi
-
-  if [ $ERROR == "0" ]
-  then
-    echo "- Desactivant mode manteniment..."
-    mv $SERVER_PATH/.htaccess $SERVER_PATH/.htaccess_disabled
-
-    if [ $? -eq 0 ]
-    then 
-      echo "|--> Mode manteniment: desactivat"
-    else
-      echo "|--> ERROR: no s'ha pogut desactivar el mode manteniment (Codi $?)"
-      ERROR="1"
-    fi
-  fi
-
-  if [ $ERROR == "0" ]
-  then
-    echo "- Eliminant la carpeta temporal..."
-    rm -rf $SERVER_PATH/$TEMP_FOLDER
-
-    if [ $? -eq 0 ]
-    then 
-      echo "|--> Carpeta temporal eliminada correctament"
-    else
-      echo "|--> ERROR: no s'ha pogut desactivar eliminar la carpeta temporal (Codi $?)"
-      ERROR="1"
-    fi
-  fi
-
-  shopt -u extglob
-
-  echo "- Tancant la connexió SSH..." 
-EOF
-
+if [ "$FILE_COUNT" -gt "$MAX_FILES_FREE_PLAN" ]; then
+  fail "La carpeta té $FILE_COUNT fitxers. El límit habitual del pla Free de Pages és $MAX_FILES_FREE_PLAN fitxers."
 fi
+
+OVERSIZED_FILES=$(find "$LOCAL_PATH" -type f -size +${MAX_FILE_SIZE_MB}M | head -n 20 || true)
+if [ -n "$OVERSIZED_FILES" ]; then
+  log "|--> Fitxers de més de ${MAX_FILE_SIZE_MB}MB detectats:"
+  log "$OVERSIZED_FILES"
+  fail "Cloudflare Pages no accepta fitxers individuals de més de ${MAX_FILE_SIZE_MB}MB"
+fi
+
+# -----------------------------------------------------------
+# Deploy a Cloudflare Pages
+# -----------------------------------------------------------
+
+log "- Desplegant a Cloudflare Pages amb Wrangler..."
+send_telegram "[CarinaMirasArt] $ENVIRONMENT | Pujant fitxers a Cloudflare Pages | Projecte: $CLOUDFLARE_PROJECT_NAME"
+
+DEPLOY_START=$SECONDS
+
+WRANGLER_COMMAND=(
+  "$NPX_CMD" wrangler pages deploy "$LOCAL_PATH"
+  --project-name "$CLOUDFLARE_PROJECT_NAME"
+  --branch "$CLOUDFLARE_BRANCH"
+  --commit-message "Deploy $ENVIRONMENT $CURRENT_DATE"
+)
+
+log "|--> Ordre: ${WRANGLER_COMMAND[*]}"
+
+if "${WRANGLER_COMMAND[@]}" 2>&1 | tee -a "$LOGFILE"; then
+  DEPLOY_END=$SECONDS
+  log "|--> Deploy a Cloudflare Pages executat amb èxit ($(format_seconds $((DEPLOY_END-DEPLOY_START))))."
+else
+  fail "Wrangler no ha pogut completar el deploy"
+fi
+
+# -----------------------------------------------------------
+# Finalització
+# -----------------------------------------------------------
 
 END_PROCESS_DATE=$SECONDS
+TEMPS_TOTAL=$((END_PROCESS_DATE-START_PROCESS_DATE))
 
-echo "---------------------------------------------------------------"  >> $LOGFILE
-if [ $ERROR -eq "0" ]
-then
-  TEMPS_TOTAL=$(($END_PROCESS_DATE-$START_PROCESS_DATE))
-  MINUTS_TOTALS=$(($TEMPS_TOTAL / 60))
-  SEGONS_TOTALS=$(($TEMPS_TOTAL - ($MINUTS_TOTALS * 60)))
-  DECIMALS_MINUTS_TOTALS=$(( $SEGONS_TOTALS * 100 / 60  ))
-  
-  echo "---- El desplegament s’ha fet correctament en $MINUTS_TOTALS m ($TEMPS_TOTAL s)." >> $LOGFILE
-  PREFIX="www"
-  if [ $ENVIRONMENT == "TEST" ]
-  then
-    PREFIX="test"
-  fi
-  ./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): Deploy fet correctament en $MINUTS_TOTALS minuts! Ves a https://$PREFIX.carinamiras.art/"
+if [ "$CLOUDFLARE_BRANCH" = "$PRODUCTION_BRANCH" ]; then
+  FINAL_URL="https://www.carinamiras.art/"
+elif [ "$CLOUDFLARE_BRANCH" = "test" ]; then
+  FINAL_URL="https://test.carinamiras-art.pages.dev/"
 else
-  echo "---- S’han produït errors en el desplegament" >> $LOGFILE
-  ./telegram-send.sh "CarinaMirasArt ($ENVIRONMENT): ERROR, desplagament incorrecte"
+  FINAL_URL="Preview deployment de Cloudflare Pages. Revisa la URL exacta a la sortida de Wrangler o a Cloudflare → Deployments."
 fi
 
+log "---------------------------------------------------------------"
+log "---- Deploy fet correctament en $(format_seconds "$TEMPS_TOTAL")."
+log "---- URL: $FINAL_URL"
+log "---------------------------------------------------------------"
+log ""
 
-echo "---------------------------------------------------------------"  >> $LOGFILE
-echo "---- Finalització del procés de deploy de CarinaMiras.art" >> $LOGFILE
-echo "---------------------------------------------------------------"  >> $LOGFILE
-echo "" >> $LOGFILE
-echo "" >> $LOGFILE
+send_telegram "[CarinaMirasArt] $ENVIRONMENT | Deploy completat | Temps: $(format_seconds "$TEMPS_TOTAL") | URL: $FINAL_URL"
+send_telegram "[CarinaMirasArt] $ENVIRONMENT | Web desplegada correctament | $FINAL_URL"
