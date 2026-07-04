@@ -5,6 +5,8 @@ import { DeviceSize } from "/src/data/responsive"
 import { IoClose, IoChevronBackOutline, IoChevronForwardOutline } from 'react-icons/io5'
 import eventBus from "../../communication/EventBus"
 import TranslateText from "../../translate/TranslateText"
+import R2Image from "../../images/R2Image"
+import { getR2WorkImage } from "../../../data/r2Assets"
 
 const getImageElement = ( img, getThumb = false ) => {
     const{ imageReference } = img
@@ -14,6 +16,12 @@ const getImageElement = ( img, getThumb = false ) => {
     if(getThumb)
         return getImage(thumb)
     return getImage(main)
+}
+
+const getR2ImageElement = (reference, img, getThumb = false) => {
+    if(!img)
+        return null
+    return getR2WorkImage(reference, img.name, getThumb)
 }
 
 const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
@@ -61,6 +69,7 @@ const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
 
     const showImageRef = selectedImage
     let showImage = getImageElement(showImageRef, false)
+    const r2ShowImage = getR2ImageElement(reference, showImageRef, false)
     //const classname = displayHorizontally ? 'display-thumbs-horizontally' : 'display-thumbs-vertically'
     const classname = 'display-thumbs-vertically'
 
@@ -129,9 +138,10 @@ const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
         //console.log("updateModaledStyles", selectedImage)
         image = image || selectedImage
         if(image){
+            const r2Image = getR2ImageElement(reference, image, false)
             const { imageReference = {} } = image
             let { main = {} } = imageReference
-            let { width, height } = main
+            let { width, height } = r2Image || main
             if(width && height){
                 const maxWidth = 900
 
@@ -203,12 +213,21 @@ const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
                                 ></FullSizeButton>
                             </ModaledButton>
                         </ModaledNavWrapper>
-                        <GatsbyImage
-                            image={showImage}
-                            alt={image_alt_text || ''}
-                            onClick={() => selectNextImage() }
-                        >
-                        </GatsbyImage>
+                        {r2ShowImage ? (
+                            <R2Image
+                                asset={r2ShowImage}
+                                alt={image_alt_text || ''}
+                                objectFit="contain"
+                                onClick={() => selectNextImage() }
+                            />
+                        ) : (
+                            <GatsbyImage
+                                image={showImage}
+                                alt={image_alt_text || ''}
+                                onClick={() => selectNextImage() }
+                            >
+                            </GatsbyImage>
+                        )}
                         <ModaledAuthorBlock>
                             <TranslateText text='Paint.copyright' />
                         </ModaledAuthorBlock>
@@ -221,13 +240,22 @@ const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
                     <ImageElement
                         onClick={() => onClickImage(showImage)}
                         >
-                        <StyledGatsbyImage
-                            style={gatsbyImageStyle}
-                            image={showImage}
-                            alt={image_alt_text}
-                            objectFit="contain"
-                            imgStyle={{ objectFit: "contain" }}
-                        ></StyledGatsbyImage>
+                        {r2ShowImage ? (
+                            <StyledR2Image
+                                style={gatsbyImageStyle}
+                                asset={r2ShowImage}
+                                alt={image_alt_text}
+                                objectFit="contain"
+                            />
+                        ) : (
+                            <StyledGatsbyImage
+                                style={gatsbyImageStyle}
+                                image={showImage}
+                                alt={image_alt_text}
+                                objectFit="contain"
+                                imgStyle={{ objectFit: "contain" }}
+                            ></StyledGatsbyImage>
+                        )}
                     </ImageElement>
                 </MainImageWrapper>
                 {images.length > 1 &&
@@ -237,10 +265,17 @@ const ImageSlider = ({ paint, reference, displayHorizontally = false}) => {
                             <ThumbElement key={index}
                                 onClick={() => onChangeImage(thumb)}
                                 className={(selectedImage.name === thumb.name ? 'selected' : '')}>
-                                <ThumbImage
-                                    image={getImageElement(thumb, true)}
-                                    alt={image_alt_text}
-                                ></ThumbImage>
+                                {getR2ImageElement(reference, thumb, true) ? (
+                                    <ThumbR2Image
+                                        asset={getR2ImageElement(reference, thumb, true)}
+                                        alt={image_alt_text}
+                                    />
+                                ) : (
+                                    <ThumbImage
+                                        image={getImageElement(thumb, true)}
+                                        alt={image_alt_text}
+                                    ></ThumbImage>
+                                )}
                             </ThumbElement>
                         ))
                     }
@@ -530,6 +565,17 @@ const StyledGatsbyImage = styled(GatsbyImage)`
     cursor: pointer;
 `
 
+const StyledR2Image = styled(R2Image)`
+    max-height: min(600px, 100vh);
+    transition: all 0.2s ease-in;
+    cursor: pointer;
+
+    img {
+        max-height: min(600px, 100vh);
+        object-fit: contain;
+    }
+`
+
 const ThumbsWrapper = styled.div`
     display: flex;
     flex-wrap: wrap;
@@ -591,6 +637,23 @@ const ThumbImage = styled(GatsbyImage)`
     width: 80px;
     height: 80px;
     cursor: pointer;
+
+    @media print {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+`
+
+const ThumbR2Image = styled(R2Image)`
+    width: 80px;
+    height: 80px;
+    cursor: pointer;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
 
     @media print {
         break-inside: avoid;

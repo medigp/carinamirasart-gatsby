@@ -54,8 +54,8 @@ MAX_NODE_MAJOR_FOR_GATSBY_BUILD=${MAX_NODE_MAJOR_FOR_GATSBY_BUILD:-22}
 # Pots sobreescriure aquestes ordres a configuration.sh si vols:
 #   GATSBY_CLEAN_CMD="npm run clean"
 #   GATSBY_BUILD_CMD="npm run build"
-GATSBY_CLEAN_CMD=${GATSBY_CLEAN_CMD:-"gatsby clean"}
-GATSBY_BUILD_CMD=${GATSBY_BUILD_CMD:-"gatsby build"}
+GATSBY_CLEAN_CMD=${GATSBY_CLEAN_CMD:-"npm run clean"}
+GATSBY_BUILD_CMD=${GATSBY_BUILD_CMD:-"npm run build"}
 
 ENVIRONMENT="TEST"
 ARG_CLEAN="S"

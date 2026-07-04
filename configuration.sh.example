@@ -30,8 +30,28 @@ MAX_FILE_SIZE_MB=25
 # En Windows/Git Bash acostuma a ser més robust usar npx.cmd.
 # Si tens diversos Node instal·lats, pots fixar el Node del projecte així:
 # NODE_BIN_DIR="/c/Users/usuari/AppData/Local/nvm/v22.12.0"
-GATSBY_CLEAN_CMD="npx.cmd gatsby clean"
-GATSBY_BUILD_CMD="npx.cmd gatsby build"
+GATSBY_CLEAN_CMD="npm run clean"
+GATSBY_BUILD_CMD="npm run build"
+
+# Gatsby build CPU
+# En Windows/Node 22 hem detectat bloquejos al cami de "run queries in workers".
+# El wrapper de build usa 1 CPU per defecte nomes a Windows si no indiques res.
+# Pots provar altres valors des d'aquest fitxer o des de PowerShell:
+#   export GATSBY_BUILD_CPU_COUNT=2
+#   export GATSBY_BUILD_CPU_COUNT=4
+#   export GATSBY_BUILD_CPU_COUNT=auto
+#
+# "auto" deixa que Gatsby decideixi i no força GATSBY_CPU_COUNT.
+export GATSBY_BUILD_CPU_COUNT=1
+
+# Gatsby develop CPU
+# Per defecte, el wrapper de develop deixa que Gatsby decideixi.
+# Pots provar:
+#   export GATSBY_DEVELOP_CPU_COUNT=1
+#   export GATSBY_DEVELOP_CPU_COUNT=2
+#   export GATSBY_DEVELOP_CPU_COUNT=4
+#   export GATSBY_DEVELOP_CPU_COUNT=auto
+export GATSBY_DEVELOP_CPU_COUNT=auto
 
 # Telegram, opcional
 # Pots mantenir els teus valors actuals aquí,

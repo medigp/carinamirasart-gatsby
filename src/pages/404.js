@@ -87,7 +87,7 @@ const XLink = styled(Link)`
     }
 `
 
-const StyledIcon = styled(Link)`    
+const StyledIcon = styled.div`    
     font-size:16em;
     line-height: 1em;
 `

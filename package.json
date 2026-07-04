@@ -13,12 +13,14 @@
     "gatsby"
   ],
   "scripts": {
-    "develop": "gatsby develop",
-    "start": "gatsby develop",
-    "build": "gatsby build",
+    "develop": "node scripts/gatsby-develop.cjs",
+    "start": "npm run develop",
+    "build": "npm run build:gatsby",
+    "build:gatsby": "node scripts/gatsby-build.cjs",
     "build:develop": "NODE_ENV=production_develop gatsby build",
     "serve": "gatsby serve",
     "clean": "gatsby clean",
+    "assets:r2": "node scripts/generate-r2-assets.cjs",
     "postinstall": "node scripts/patch-uri-js-punycode.cjs",
     "deploy_to_server": "./deploy.sh",
     "deploy_to_server:test": "./deploy.sh --env test",

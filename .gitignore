@@ -1,5 +1,6 @@
 node_modules/
 .cache/
+.wrangler/
 .env
 .env.development
 .env.production
@@ -12,3 +13,4 @@ deploy_log.txt
 wip - carina miras.txt
 package-lock.json
 *.log
+generated-assets/
