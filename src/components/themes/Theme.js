@@ -121,7 +121,8 @@ export const ThemeStyles = createGlobalStyle`
                 opacity: 0;
                 transition: all 0.5s ease;
 
-                svg{
+                svg,
+                .carina-signature-icon{
                     xx-font-size: clamp(10rem, 30vw, 15rem);
                     font-size: 80rem;
                     color:#333;
@@ -146,7 +147,8 @@ export const ThemeStyles = createGlobalStyle`
                     div{
                         opacity:1;
 
-                        svg{
+                        svg,
+                        .carina-signature-icon{
                             font-size: clamp(10rem, 30vw, 15rem);
                             x-font-size: clamp(8rem, 25vw, 15rem);
                         }

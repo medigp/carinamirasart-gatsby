@@ -176,13 +176,13 @@ export const Head = ({data, pageContext}) => {
 
 export const query = graphql`
 query {
-  imageReference : file(relativePath: {eq: "press.jpg"}){
+  imageReference : file(relativePath: {eq: "pageTexts/press/press.jpg"}){
     id
     image : childImageSharp {
       gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
     }
   }
-  seoImage : file(relativePath: {eq: "press.jpg"}){
+  seoImage : file(relativePath: {eq: "pageTexts/press/press.jpg"}){
     childImageSharp {
       gatsbyImageData(width: 1200, layout: FIXED)
     }

@@ -20,7 +20,7 @@ const SocialMedia = ({ specialClassname, showSocialMediaText = false}) => {
     const fbLink = facebook !== undefined ? facebook : 'https://www.facebook.com/carina.miras.art/'
     const liLink = linkedin !== undefined ? linkedin : 'https://es.linkedin.com/in/carina-miras-boronat-395898112'
     const twitterLink = twitter !== undefined ? twitter : 'https://twitter.com/cari_miras'
-    const mailLink = mail !== undefined ? mail : 'hi@carinamiras.art'
+    const mailLink = mail !== undefined ? mail : 'carina8618@gmail.com'
 
     const instagramTitle = getTranslatedText('Contact.instagram.title')
     const twitterTitle = getTranslatedText('Contact.twitter.title')
