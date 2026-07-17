@@ -303,7 +303,7 @@ const WallLabel = ({paint, serie, serieId, site, isSerie = false, titlePrefix = 
                           <span className='socialmedia-element sm-remark'><StyledIcon className='sm-icon'><TfiWorld /></StyledIcon><span className='socialmedia-text'>www.carinamiras.art</span></span>
                         </SocialMediaElement>
                         <SocialMediaElement>
-                          <span className='socialmedia-element'><StyledIcon className='sm-icon'><FiMail /></StyledIcon><span className='socialmedia-text'>hi@carinamiras.art</span></span>
+                          <span className='socialmedia-element'><StyledIcon className='sm-icon'><FiMail /></StyledIcon><span className='socialmedia-text'>carina8618@gmail.com</span></span>
                         </SocialMediaElement>
                       </SocialMediaList>
                   </SocialContainer>

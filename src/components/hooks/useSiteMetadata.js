@@ -20,7 +20,7 @@ export const useSiteMetadata = () => {
             }
           }
         }
-        featuredImage : file(relativePath: {eq: "index-background.jpeg"}){
+        featuredImage : file(relativePath: {eq: "seo-image.jpg"}){
             childImageSharp {
                 gatsbyImageData(width: 1200, layout : FIXED)
             }

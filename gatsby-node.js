@@ -77,6 +77,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             description : String
             wallLabel : WallLabelData
             body: String
+            showOnMainScreen : Boolean
             sellingData : SellingData
             lastModificationDate: Date @dateformat
         }
@@ -102,6 +103,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             description : String
             wallLabel : WallLabelData
             body: String
+            showOnMainScreen : Boolean
             sellingData : SellingData
             lastModificationDate: Date @dateformat
         }
@@ -408,7 +410,7 @@ exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
     }else if(isPaint){
         //console.log("Paint",fileAbsolutePath)
         //Node de pintures
-        const { classification = {}, pageName, url, reference, hide = false} = node.frontmatter
+        const { classification = {}, pageName, url, reference, hide = false, showOnMainScreen = false} = node.frontmatter
         const {serie = defaultSerie} = classification
 
         //Sense les series
@@ -460,6 +462,7 @@ exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
             body : node.body,
             sellingData : getSellingDataByNode(node),
             lastModificationDate : getLastModificationDateByNode(node),
+            showOnMainScreen: showOnMainScreen,
             parent : node.id,
             internal : {
                 type : 'Paint',

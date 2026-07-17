@@ -45,7 +45,7 @@ const Press = ({data}) => {
 
     const getYearParagraphs = (year, paragraphs) => {
       return (
-        <PressYearContainer>
+        <PressYearContainer key={year}>
           <PressYearTitle><span>{year}</span></PressYearTitle>
           <PressYearContent className='py-content'>
             { paragraphs && 

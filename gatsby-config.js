@@ -19,7 +19,7 @@ module.exports = {
     author: "Carina Miras",
     keywords : ["abstract art", "art"],
     social : {
-      mail : "hi@carinamiras.art",
+      mail : "hi@carina8618@gmail.com",
       twitter : "https://twitter.com/cari_miras",
       instagram : 'https://www.instagram.com/carina.miras.art/',
       facebook : 'https://www.facebook.com/carina.miras.art/',

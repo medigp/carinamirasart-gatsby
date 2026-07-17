@@ -14,9 +14,14 @@ export const Translation = {
         es : 'Carina Miras'
     },
     'page.subtitle'  : {
-        ca : 'Art visual',
-        en : 'Visual Art',
-        es : 'Arte Visual'
+        ca : 'Art pictòric',
+        en : 'Pictoric Art',
+        es : 'Arte pictórico'
+    },
+    'page.paintssection.title'  : {
+        ca : 'Del taller...',
+        en : 'From the studio...',
+        es : 'Del taller...'
     },
     'paint.copyright' : {
         ca : 'Pintura creada per Carina Miras',
@@ -564,6 +569,11 @@ export const Translation = {
         ca : 'Mostra tot',
         en : 'Show all',
         es : 'Muestra todo',
+    },
+    'show.more' : {
+        ca : 'Veure més',
+        en : 'Show more',
+        es : 'Ver más',
     },
     'hide' : {
         ca : 'Amaga',

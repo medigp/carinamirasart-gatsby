@@ -9,6 +9,20 @@
  import { useSiteMetadata } from '/src/components/hooks/useSiteMetadata'
  import { getTranslatedText, getExistsTranslation } from '/src/components/translate/TranslateText'
 
+ const getSeoImageData = (imageRef) => {
+    if(!imageRef)
+      return null
+    if(imageRef.images)
+      return imageRef
+    if(imageRef.childImageSharp && imageRef.childImageSharp.gatsbyImageData)
+      return imageRef.childImageSharp.gatsbyImageData
+    if(imageRef.imageReference && imageRef.imageReference.gatsbyImageData)
+      return imageRef.imageReference.gatsbyImageData
+    if(imageRef.imageReference && imageRef.imageReference.main)
+      return imageRef.imageReference.main
+    return null
+ }
+
  const getSiteURL = (data) => {
     if(process.env.GATSBY_SITE_URL)
         return process.env.GATSBY_SITE_URL
@@ -24,16 +38,16 @@
     return window.location.origin
  }
 
- function Seo({ pageId, description, lang, image, meta, keywords, title, useTitleTemplate = true, pathname, url : pageUrl, follow = true }) {
+ function Seo({ pageId, description = ``, lang = `ca`, image, meta = [], keywords = ['art', 'abstract art'], title, useTitleTemplate = true, pathname = ``, url : pageUrl, follow = true }) {
   
   const data = useSiteMetadata()
   const urlSite = getSiteURL(data)
   const pageIdDescription = getExistsTranslation(pageId + '.seo.description', lang) ? getTranslatedText(pageId + '.seo.description', lang) : null
   const metaDescription = description || pageIdDescription || data.site.siteMetadata.description
   const author = data.site.siteMetadata.author
-  const imageRef = image || data.featuredImage
-  const ogImage = imageRef && imageRef.childImageSharp && imageRef.childImageSharp.gatsbyImageData ? imageRef.childImageSharp.gatsbyImageData.images : null
-  const metaImage = ogImage ? `${urlSite}${ogImage.fallback.src}` : null
+  const imageData = getSeoImageData(image) || getSeoImageData(data.featuredImage)
+  const ogImage = imageData && imageData.images ? imageData.images : null
+  const metaImage = ogImage && ogImage.fallback ? `${urlSite}${ogImage.fallback.src}` : null
   const metaUrl = `${urlSite}${pathname}`
   const titleTemplate = (!useTitleTemplate ? data.site.siteMetadata.title : data.site.siteMetadata.titleTemplate )
   const favicon = data.site.siteMetadata.icon
@@ -79,13 +93,6 @@
   )
  }
  
- Seo.defaultProps = {
-   lang: `ca`,
-   meta: [],
-   keywords: ['art','abstract art'],
-   pathname: ``,
-   description : ``
- }
  
  Seo.propTypes = {
     title: PropTypes.string.isRequired,
