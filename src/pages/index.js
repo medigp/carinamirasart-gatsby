@@ -63,6 +63,7 @@ const Home = ({data}) => {
         <FeaturedPaintsSection
           title='Page.paintssection.title'
           paints={featuredPaints}
+          galleryBackgroundPaint={galleryBackgroundPaint}
         />
       </Layout>
   )
