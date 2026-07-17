@@ -221,11 +221,11 @@ const CompositionSchema = ({sizes, maxHeight = 100, showBreadth = true, alwaysSh
                     }
                     <SizeDL>
                         <dt><TranslateText text="Size.height" /></dt>
-                        <dl>{size.h}</dl>
+                        <dd>{size.h}</dd>
                         <dt><TranslateText text="Size.width" /></dt>
-                        <dl>{size.w}</dl>
+                        <dd>{size.w}</dd>
                         <dt><TranslateText text="Size.breadth" /></dt>
-                        <dl>{size.b}</dl>
+                        <dd>{size.b}</dd>
                     </SizeDL>
                 </SizeBlock>
                 ))}
