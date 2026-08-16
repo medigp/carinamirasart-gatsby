@@ -1,8 +1,10 @@
 const path = require("path")
 const get = require("lodash.get")
 const QRCode = require("qrcode")
+const { sourceDirectusNodes } = require("./src/data/directus/sourceNodes")
 
 const defaultSerie = 'Miscellany'
+const useDirectus = () => process.env.GATSBY_CONTENT_SOURCE === 'directus'
 /**
  * CREATE SCHEDMA : Definició dels tipus de GraphQL
  */
@@ -111,6 +113,8 @@ exports.createSchemaCustomization = ({ actions }) => {
         interface PageTextInterface implements Node{
             id: ID!
             reference : String
+            title : String
+            subtitle : String
             seo : Seo
             image : ImageGroup
             paragraphs : [ Paragraph ]
@@ -122,6 +126,8 @@ exports.createSchemaCustomization = ({ actions }) => {
         type PageText implements Node & PageTextInterface @dontInfer{
             id: ID!
             reference : String
+            title : String
+            subtitle : String
             seo : Seo
             image : ImageGroup
             paragraphs : [ Paragraph ]
@@ -162,7 +168,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             subtitle : String
             text : String
             sortText : String
-            image : File @fileByRelativePath
+            image : File
             author : String
             authorTitle : String
             date: Date @dateformat
@@ -182,16 +188,16 @@ exports.createSchemaCustomization = ({ actions }) => {
         }
 
         type ImageGroup {
-            main : File @fileByRelativePath
+            main : File
             image_alt_text : String!
-            otherImages : [ File ] @fileByRelativePath
+            otherImages : [ File ]
         }
 
         type LinkData {
             title: String
             media: String
             link : String
-            image : File @fileByRelativePath
+            image : File
         }
     
         type ClassificationData {
@@ -244,8 +250,8 @@ exports.createSchemaCustomization = ({ actions }) => {
         type SellingData {
             productState : ProductStatesEnum!
             showProductState : Boolean
-            priceDollar : Float!
-            priceEur : Float!
+            priceDollar : Float
+            priceEur : Float
             showPrice : Boolean
         }
 
@@ -258,7 +264,7 @@ exports.createSchemaCustomization = ({ actions }) => {
         type Seo {
             description : String
             keywords : [ String ]
-            image : File @fileByRelativePath
+            image : File
         }
 
         type QRCodeImage {
@@ -333,6 +339,8 @@ const createQRCode = (fieldName) => async (source) => {
   }
 
 exports.onCreateNode = async ({ node, getNode, actions, createNodeId }) => {
+    if(useDirectus())
+        return;
     if(node.internal.type !== 'Mdx')
         return;
     const { parent } = node
@@ -500,7 +508,9 @@ const getImageObjectByNode = ( node ) => {
     return {
         main : main,
         image_alt_text : (image_alt_text || title || subtitle || description || ""),
-        otherImages : otherImages
+        otherImages : otherImages,
+        _mainAbsolutePath : main ? path.resolve(path.dirname(node.internal.contentFilePath), main) : null,
+        _otherAbsolutePaths : otherImages.map(imagePath => path.resolve(path.dirname(node.internal.contentFilePath), imagePath))
     }
 }
 
@@ -686,7 +696,10 @@ const getSeoObjectByNode = (node, classification = {}, type = 'Undefined') => {
     return {
         description : seoDescription || seo.description || description || subtitle || title,
         image : (seo ? seo.image : null) || mainImage,
-        keywords : _keywords
+        keywords : _keywords,
+        _imageAbsolutePath : ((seo ? seo.image : null) || mainImage)
+            ? path.resolve(path.dirname(node.internal.contentFilePath), (seo ? seo.image : null) || mainImage)
+            : null
     }
 }
 
@@ -785,13 +798,59 @@ const getSiteURL = (data) => {
 /**
  * CREATE RESOLVERS : definit per poder utilitzar els bodys de Mdx com a html
  */
+const resolveFileNode = (source, nodeIdField, absolutePathField, context) => {
+    const nodeId = source?.[nodeIdField]
+    if(nodeId)
+        return context.nodeModel.getNodeById({ id: nodeId })
+    const absolutePath = source?.[absolutePathField]
+    if(!absolutePath)
+        return null
+    return context.nodeModel.findOne({
+        type: 'File',
+        query: { filter: { absolutePath: { eq: absolutePath } } },
+    })
+}
+
 exports.createResolvers = ({ createResolvers }) => {
     console.log("CreateResolvers")
     createResolvers({
+        ImageGroup: {
+            main: {
+                type: 'File',
+                resolve: (source, args, context) =>
+                    resolveFileNode(source, '_mainNodeId', '_mainAbsolutePath', context),
+            },
+            otherImages: {
+                type: '[File]',
+                resolve: (source, args, context) => {
+                    const nodeIds = source?._otherNodeIds
+                    if(Array.isArray(nodeIds))
+                        return nodeIds.map(id => context.nodeModel.getNodeById({ id })).filter(Boolean)
+                    const paths = source?._otherAbsolutePaths
+                    if(!Array.isArray(paths))
+                        return []
+                    return Promise.all(paths.map(absolutePath =>
+                        context.nodeModel.findOne({
+                            type: 'File',
+                            query: { filter: { absolutePath: { eq: absolutePath } } },
+                        })
+                    ))
+                },
+            },
+        },
+        Seo: {
+            image: {
+                type: 'File',
+                resolve: (source, args, context) =>
+                    resolveFileNode(source, '_imageNodeId', '_imageAbsolutePath', context),
+            },
+        },
         Paint: {
             body: {
                 type: 'String',
                 resolve: (source, args, context, info) => {
+                    if(source.source === 'directus')
+                        return source.body;
                     const type = info.schema.getType('Mdx');
                     const mdxFields = type.getFields();
                     const resolver = mdxFields.body.resolve;
@@ -809,6 +868,8 @@ exports.createResolvers = ({ createResolvers }) => {
             body: {
                 type: 'String',
                 resolve: (source, args, context, info) => {
+                    if(source.source === 'directus')
+                        return source.body;
                     const type = info.schema.getType('Mdx');
                     const mdxFields = type.getFields();
                     const resolver = mdxFields.body.resolve;
@@ -825,6 +886,8 @@ exports.createResolvers = ({ createResolvers }) => {
             body: {
                 type: 'String',
                 resolve: (source, args, context, info) => {
+                    if(source.source === 'directus')
+                        return source.body;
                     const type = info.schema.getType('Mdx');
                     const mdxFields = type.getFields();
                     const resolver = mdxFields.body.resolve;
@@ -1005,4 +1068,13 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
             }
         })
     }
+}
+
+/**
+ * SOURCE NODES: Directus is opt-in so MDX remains the safe fallback.
+ */
+exports.sourceNodes = async helpers => {
+    if(!useDirectus())
+        return;
+    await sourceDirectusNodes(helpers)
 }

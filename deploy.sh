@@ -28,16 +28,9 @@ set -Eeuo pipefail
 # Configuració base
 # -----------------------------------------------------------
 
-# Manté compatibilitat amb el teu sistema actual de configuració.
-# Ja no necessitem PORT, IP, SERVER_PATH, TEMP_FOLDER, etc.
-if [ -f "configuration.sh" ]; then
-  # shellcheck disable=SC1091
-  source configuration.sh
-fi
-
-if [ -n "${NODE_BIN_DIR:-}" ]; then
-  export PATH="$NODE_BIN_DIR:$PATH"
-fi
+# Configuració local del build i del deploy.
+# La configuracio es carrega des del fitxer .env corresponent despres
+# d'interpretar --env. configuration.sh ja no forma part del flux.
 
 CURRENT_DATE=$(date +%Y-%m-%d_%H:%M)
 START_PROCESS_DATE=$SECONDS
@@ -51,7 +44,7 @@ MAX_FILES_FREE_PLAN=${MAX_FILES_FREE_PLAN:-20000}
 MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-25}
 MAX_NODE_MAJOR_FOR_GATSBY_BUILD=${MAX_NODE_MAJOR_FOR_GATSBY_BUILD:-22}
 
-# Pots sobreescriure aquestes ordres a configuration.sh si vols:
+# Pots sobreescriure aquestes ordres al fitxer .env de l'entorn:
 #   GATSBY_CLEAN_CMD="npm run clean"
 #   GATSBY_BUILD_CMD="npm run build"
 GATSBY_CLEAN_CMD=${GATSBY_CLEAN_CMD:-"npm run clean"}
@@ -199,6 +192,47 @@ done
 ENVIRONMENT=${ENVIRONMENT^^}
 ENVIRONMENT_LOWER=${ENVIRONMENT,,}
 
+case "$ENVIRONMENT_LOWER" in
+  prod|production)
+    ENV_FILE=".env.production"
+    ;;
+  test)
+    ENV_FILE=".env.test"
+    ;;
+  develop|development)
+    ENV_FILE=".env.development"
+    ;;
+  *)
+    fail "Entorn no suportat: $ENVIRONMENT_LOWER"
+    ;;
+esac
+
+[ -f "$ENV_FILE" ] || fail "No existeix el fitxer de configuracio $ENV_FILE"
+
+# Exporta totes les assignacions perque arribin als processos fills.
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
+
+REQUIRED_ENV_VARIABLES=(
+  LOCAL_PATH LOGFILE CLOUDFLARE_PROJECT_NAME PRODUCTION_BRANCH
+  MIN_FILES_TO_DEPLOY MAX_FILES_FREE_PLAN MAX_FILE_SIZE_MB
+  GATSBY_CLEAN_CMD GATSBY_BUILD_CMD GATSBY_SITE_URL GATSBY_CREATE_GALLERY_SERIES
+  GATSBY_CONTENT_SOURCE DIRECTUS_LANGUAGES DIRECTUS_URL DIRECTUS_TOKEN
+  DIRECTUS_BASIC_AUTH_USER DIRECTUS_BASIC_AUTH_PASSWORD
+)
+
+for variable_name in "${REQUIRED_ENV_VARIABLES[@]}"; do
+  if ! grep -Eq "^[[:space:]]*${variable_name}[[:space:]]*=" "$ENV_FILE" || [ -z "${!variable_name:-}" ]; then
+    fail "Falta la variable obligatoria $variable_name a $ENV_FILE"
+  fi
+done
+
+if [ -n "${NODE_BIN_DIR:-}" ]; then
+  export PATH="$NODE_BIN_DIR:$PATH"
+fi
+
 if [ -n "$CUSTOM_BRANCH" ]; then
   CLOUDFLARE_BRANCH="$CUSTOM_BRANCH"
 elif [ "$ENVIRONMENT_LOWER" = "prod" ] || [ "$ENVIRONMENT_LOWER" = "production" ]; then
@@ -216,6 +250,7 @@ NPX_CMD=$(get_npx_command)
 log "---------------------------------------------------------------"
 log "---- Execució del deploy de CarinaMiras.art a Cloudflare Pages"
 log "---- -> Entorn: $ENVIRONMENT"
+log "---- -> Configuracio: $ENV_FILE"
 log "---- -> Projecte Pages: $CLOUDFLARE_PROJECT_NAME"
 log "---- -> Branch Pages: $CLOUDFLARE_BRANCH"
 log "---- -> Carpeta a desplegar: $LOCAL_PATH"
@@ -240,7 +275,7 @@ if [ "$ARG_CLEAN" = "S" ]; then
   send_telegram "[CarinaMirasArt] $ENVIRONMENT | Clean local de Gatsby en curs"
 
   CLEAN_START=$SECONDS
-  if eval "$GATSBY_CLEAN_CMD" >> "$LOGFILE" 2>&1; then
+  if eval "$GATSBY_CLEAN_CMD" 2>&1 | tee -a "$LOGFILE"; then
     CLEAN_ENDS=$SECONDS
     log "|--> Clean executat amb èxit ($(format_seconds $((CLEAN_ENDS-CLEAN_START))))."
   else
@@ -259,7 +294,7 @@ if [ "$ARG_BUILD" = "S" ]; then
   send_telegram "[CarinaMirasArt] $ENVIRONMENT | Build de Gatsby en curs"
 
   BUILD_START=$SECONDS
-  if eval "$GATSBY_BUILD_CMD" >> "$LOGFILE" 2>&1; then
+  if eval "$GATSBY_BUILD_CMD" 2>&1 | tee -a "$LOGFILE"; then
     BUILD_ENDS=$SECONDS
     log "|--> Build executat amb èxit ($(format_seconds $((BUILD_ENDS-BUILD_START))))."
     send_telegram "[CarinaMirasArt] $ENVIRONMENT | Build completat | Temps: $(format_seconds $((BUILD_ENDS-BUILD_START)))"

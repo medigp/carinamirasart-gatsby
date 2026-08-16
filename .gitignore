@@ -14,3 +14,5 @@ wip - carina miras.txt
 package-lock.json
 *.log
 generated-assets/
+local-preview-audit/
+.env.test

@@ -88,7 +88,10 @@ const PaintTemplate = ({data}) => {
                   {technique && 
                     <>
                       <dt><TranslateText text='Technique' /></dt>
-                      <dd><TranslateText text='Technique.withSurface' dataToReplace ={ [ technique, surface.toLowerCase() ]} translateDataToReplace={true}/></dd>
+                      <dd>{surface
+                        ? <TranslateText text='Technique.withSurface' dataToReplace ={ [ technique, surface.toLowerCase() ]} translateDataToReplace={true}/>
+                        : technique
+                      }</dd>
                     </>
                   }
                   {style && style !== 'Undefined' && 

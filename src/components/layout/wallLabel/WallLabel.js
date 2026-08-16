@@ -76,7 +76,9 @@ const getDescription = (paint, serie) => {
     return wallLabel.description
 
   const { technique, surface } = (classification || {})
-  const techniqueText = technique === undefined ? null : getTranslatedText('Technique.withSurface', null, [ technique, surface.toLowerCase() ], true)
+  const techniqueText = technique && surface
+    ? getTranslatedText('Technique.withSurface', null, [ technique, surface.toLowerCase() ], true)
+    : technique || null
 
   const sizesText = getSizesText(sizes)
 

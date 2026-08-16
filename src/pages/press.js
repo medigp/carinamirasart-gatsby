@@ -14,12 +14,13 @@ const Press = ({data}) => {
     const { isClient } = useIsClient();
 
     const { imageReference = {}, pageText = {}} = data
-    const { image } = (imageReference || {})
-    const { paragraphs = [], sortParagraphs } = (pageText || {})
+    const { image: fallbackImage } = (imageReference || {})
+    const { paragraphs = [], sortParagraphs, title: pageTitle, subtitle: pageSubtitle, image: pageImage } = (pageText || {})
+    const image = pageImage?.main?.image || fallbackImage
 
     const lang = null
-    const title = getTranslatedText('Press.title', lang)
-    const subtitle = getTranslatedText('Press.subtitle', lang)
+    const title = pageTitle || getTranslatedText('Press.title', lang)
+    const subtitle = pageSubtitle || getTranslatedText('Press.subtitle', lang)
 
     const getDateTxt = (date) => {
       if(!date || !date.includes("-"))
@@ -161,8 +162,8 @@ export const Head = ({data, pageContext}) => {
   const { pageText = {}, seoImage = {} } = data
   const { seo = {} } = (pageText || {})
   const {description, keywords} = (seo || {})
+  const title = pageText?.title || getTranslatedText('Press.title', null)
   const lang = null
-  const title = getTranslatedText('Press.title',lang)
   return (
     <Seo
         pageId='Press'
@@ -191,6 +192,15 @@ query {
     seo {
       keywords
       description
+    }
+    title
+    subtitle
+    image {
+      main {
+        image: childImageSharp {
+          gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
+        }
+      }
     }
     paragraphs {
       date,

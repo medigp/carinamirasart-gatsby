@@ -10,12 +10,13 @@ import MessageBlock from "/src/components/layout/messageblock/MessageBlock"
 
 const About = ({data}) => {
     const { imageReference = {}, pageText = {} } = data
-    const {image} = (imageReference || {})
-    const { paragraphs = [], sortParagraphs } = (pageText || {})
+    const {image: fallbackImage} = (imageReference || {})
+    const { paragraphs = [], sortParagraphs, title: pageTitle, subtitle: pageSubtitle, image: pageImage } = (pageText || {})
+    const image = pageImage?.main?.image || fallbackImage
     
     const lang = null
-    const title = getTranslatedText('About.title',lang)
-    const subtitle = getTranslatedText('About.subtitle', lang)
+    const title = pageTitle || getTranslatedText('About.title',lang)
+    const subtitle = pageSubtitle || getTranslatedText('About.subtitle', lang)
 
     const chronologyTitle = getTranslatedText('Chronology',lang)
 
@@ -90,8 +91,8 @@ export const Head = ({data, pageContext}) => {
     const { pageText = {}, seoImage = {} } = data
     const { seo = {} } = (pageText || {})
     const {description, keywords} = (seo || {})
+    const title = pageText?.title || getTranslatedText('About.title', null)
     const lang = null
-    const title = getTranslatedText('About.title',lang)
     return (
       <Seo
           pageId='About'
@@ -120,6 +121,15 @@ export const query = graphql`
       seo {
         keywords
         description
+      }
+      title
+      subtitle
+      image {
+        main {
+          image: childImageSharp {
+            gatsbyImageData(width: 500, quality: 90, webpOptions: {quality: 80})
+          }
+        }
       }
       paragraphs {
         title

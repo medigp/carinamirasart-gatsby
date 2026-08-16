@@ -2,8 +2,10 @@
 # https://hackernoon.com/how-to-create-a-simple-bash-shell-script-to-send-messages-on-telegram-lcz31bx
 # https://www.youtube.com/watch?v=CVG_ejMjNfU&ab_channel=WatchNLearnIT
 #
-# this 3 checks (if) are not necessary but should be convenient
-source configuration.sh
+# Quan el crida deploy.sh, aquestes variables venen del .env de l'entorn.
+# Per executar aquest script sol, cal exportar-les abans.
+: "${TELEGRAM_BOT_TOKEN_ID:?Falta TELEGRAM_BOT_TOKEN_ID}"
+: "${TELEGRAM_CHAT_ID:?Falta TELEGRAM_CHAT_ID}"
 
 if [ "$1" == "-h" ]; then
   echo "Usage: `basename $0` \"text message\""
