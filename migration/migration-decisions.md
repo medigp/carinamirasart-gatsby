@@ -512,10 +512,10 @@ Generic values found: none.
 - None
 - Non-empty image: **1**
 - content/pageTexts/about/about.mdx#paragraph-12
-- Not directly convertible without inventing required values: **3**
-- content/pageTexts/about/about.mdx#paragraph-1
-- content/pageTexts/about/about.mdx#paragraph-2
-- content/pageTexts/about/about.mdx#paragraph-3
+- Biography translations with approved duplicated year in `year_label` and `title`: **34**
+- The legacy `title` is the visible year and is copied exactly to both `year_label` and `title`, consistent with the 13 corrected existing events.
+- The legacy `subtitle` was rendered as subtitle and is absent in three entries.
+- `_subtitle` appears in three entries but was neither queried nor rendered by the legacy Gatsby page.
 
 ### Title values
 
@@ -539,7 +539,7 @@ Generic values found: none.
 | 2024 | 5 | year |
 | 2025 | 4 | year |
 
-Directus requires `reference`, `reference_date`, Catalan `year_label`, and Catalan `title`. This report does not invent them.
+Directus metadata marks Catalan `title` required. The approved mapping copies the exact legacy year to both `year_label` and `title`; no schema change is required.
 
 ## 8. PRESS
 
@@ -627,7 +627,7 @@ Inventory only. No Directus collection is proposed.
 - Define the exact `hide`/missing-hide → Directus `status` policy for artworks, series and pages.
 
 - Decide whether the legacy `sizes[].cm.breadth` field means Directus `depth_cm`; no automatic equivalence is assumed.
-- Decide how to generate stable, unique `biography_events.reference` and what `reference_date` means when the source only provides a year; also decide a required title policy for entries without subtitle.
+- Biography dates are settled: preserve precise dates when actually available; otherwise use technical `YYYY-01-01T12:00:00`, keep the visible value in `year_label`, and generate deterministic `YYYYMMDD`, `-02`, ... references. The 13 corrected existing events use explicit reference overrides and SKIP; new events use deterministic references; `sort` is legacy index + 1.
 - The three malformed multi-image references are resolved by the explicit, reference-scoped overrides documented below; never apply a global filename heuristic.
 
 ### DECISIONS DEFINITIVES D'ARTWORKS

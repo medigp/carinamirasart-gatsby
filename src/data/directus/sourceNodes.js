@@ -304,13 +304,14 @@ exports.sourceDirectusNodes = async helpers => {
         paragraphs = biographyEvents.map(event => {
           const text = selectTranslation(event.translations, lang)
           const date = String(event.date_start || event.reference_date || "").slice(0, 10)
+          const chronologySort = String(event.sort ?? event.id).padStart(10, "0")
           return {
             title: text.year_label || date.slice(0, 4),
             subtitle: text.subtitle,
             text: text.description,
             date,
             link: text.external_url || event.external_url,
-            sortText: date,
+            sortText: `${date}-sort-${chronologySort}`,
           }
         })
       }

@@ -36,7 +36,14 @@ const seriesDateField = directusSchema.fields.find(
 const pageSeoImageField = directusSchema.fields.find(
   field => field.collection === "pages" && field.field === "seo_image"
 )
+const biographyImageField = directusSchema.fields.find(
+  field => field.collection === "biography_events" && field.field === "image"
+)
+const biographyReferenceDateField = directusSchema.fields.find(
+  field => field.collection === "biography_events" && field.field === "reference_date"
+)
 const PAGES_ASSET_FOLDER = pageSeoImageField?.meta?.options?.folder ?? null
+const BIOGRAPHY_ASSET_FOLDER = biographyImageField?.meta?.options?.folder ?? null
 const EXCLUDED_PAGE_REFERENCES = new Set(["exhibitions", "reviews"])
 const artworkSaleStatusField = directusSchema.fields.find(
   field => field.collection === "artworks" && field.field === "sale_status"
@@ -60,6 +67,25 @@ if (artworkDateField?.schema?.data_type !== "timestamp without time zone") {
 if (seriesDateField?.schema?.data_type !== "timestamp without time zone") {
   throw new Error("series.date ja no és timestamp without time zone; cal revisar la conversió")
 }
+if (biographyReferenceDateField?.schema?.data_type !== "timestamp without time zone") {
+  throw new Error("biography_events.reference_date ja no és timestamp without time zone; cal revisar la conversió")
+}
+
+const BIOGRAPHY_EXISTING_REFERENCE_OVERRIDES = Object.freeze({
+  0: "1986-born",
+  1: "2001-classes",
+  2: "2002-studies",
+  3: "2004-belles-arts",
+  4: "2006-usa",
+  5: "2008-curtmetatges",
+  6: "2010-llicenciada",
+  7: "2013-photo",
+  8: "2013-teaching",
+  9: "2014-patinadora",
+  10: "2015-teaching",
+  11: "2015-nepal",
+  12: "2019-artista-visual",
+})
 
 const VOCABULARY_MAP = {
   technique: {
@@ -116,8 +142,8 @@ function parseArguments(argv) {
     else throw new Error(`Argument desconegut: ${argument}`)
   }
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
-  if (result.all && !["artwork", "pages"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork o pages")
-  if (result.type === "pages" && result.all && !result.dryRun) throw new Error("--type pages --all només està suportat amb --dry-run")
+  if (result.all && !["artwork", "pages", "biography"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork, pages o biography")
+  if (["pages", "biography"].includes(result.type) && result.all && !result.dryRun) throw new Error(`--type ${result.type} --all només està suportat amb --dry-run`)
   if (result.type === "artwork" && result.all && !result.dryRun && !result.confirmBatch) {
     throw new Error("El batch real requereix --confirm-batch")
   }
@@ -125,7 +151,8 @@ function parseArguments(argv) {
     throw new Error("--confirm-batch només és vàlid per --type artwork --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
-  if (!["artwork", "series", "vocabulary", "pages"].includes(result.type)) throw new Error("Tipus no suportat")
+  if (!["artwork", "series", "vocabulary", "pages", "biography"].includes(result.type)) throw new Error("Tipus no suportat")
+  if (result.type === "biography" && !result.dryRun) throw new Error("--type biography només està suportat amb --dry-run de moment")
   if (result.type === "vocabulary" && !result.collection) throw new Error("Falta --collection <collection>")
   return result
 }
@@ -171,6 +198,34 @@ function findPageFile(reference) {
   const filename = matches[0].filename
   return { filename, parsed: matter(fs.readFileSync(filename, "utf8")) }
 }
+function listBiographyEntries() {
+  const filename = path.join(projectRoot, "content", "pageTexts", "about", "about.mdx")
+  if (!fs.existsSync(filename)) throw new Error("No existeix content/pageTexts/about/about.mdx")
+  const parsed = matter(fs.readFileSync(filename, "utf8"))
+  if (!Array.isArray(parsed.data.paragraphs)) throw new Error("about.paragraphs no és un array")
+  const generatedCollisions = new Map()
+  return parsed.data.paragraphs.map((paragraph, index) => {
+    const yearLabel = String(paragraph?.title ?? "")
+    if (!/^\d{4}$/.test(yearLabel)) throw new Error(`about.paragraphs[${index}].title no és un any complet: ${yearLabel}`)
+    const referenceDate = `${yearLabel}-01-01T12:00:00`
+    let reference = BIOGRAPHY_EXISTING_REFERENCE_OVERRIDES[index]
+    if (!reference) {
+      const base = `${yearLabel}0101`
+      const occurrence = (generatedCollisions.get(base) || 0) + 1
+      generatedCollisions.set(base, occurrence)
+      reference = occurrence === 1 ? base : `${base}-${String(occurrence).padStart(2, "0")}`
+    }
+    return { filename, index, paragraph, reference, referenceDate, yearLabel }
+  })
+}
+
+function findBiographyEntry(reference) {
+  const matches = listBiographyEntries().filter(entry => entry.reference === reference)
+  if (!matches.length) throw new Error(`No s'ha trobat l'event biogràfic legacy: ${reference}`)
+  if (matches.length > 1) throw new Error(`Reference biogràfica duplicada: ${reference}`)
+  return matches[0]
+}
+
 function requiredEnvironment() {
   const names = [
     "DIRECTUS_URL",
@@ -688,6 +743,120 @@ async function runPage(options, report, fileMap, fileCache, uploadedFilesThisRun
   return report
 }
 
+function biographyTranslation(paragraph, yearLabel, languageCode, descriptionHtml) {
+  const translation = {
+    languages_code: languageCode,
+    year_label: yearLabel,
+    title: yearLabel,
+  }
+  if (paragraph.subtitle !== undefined && paragraph.subtitle !== null && paragraph.subtitle !== "") {
+    translation.subtitle = paragraph.subtitle
+  }
+  if (descriptionHtml !== undefined) translation.description = descriptionHtml
+  return translation
+}
+
+async function runBiography(options, report, fileMap, fileCache, uploadedFilesThisRun) {
+  const entry = findBiographyEntry(options.reference)
+  const { filename, index, paragraph, reference, referenceDate, yearLabel } = entry
+  report.reference = reference
+
+  const catalan = await findExact("languages", "language", "ca", "code,language")
+  if (!catalan?.code) throw new Error("No s'ha pogut resoldre languages.language=ca")
+
+  const existing = await findExact(
+    "biography_events",
+    "reference",
+    reference,
+    "id,reference,reference_date,status,sort,translations.languages_code,translations.year_label,translations.title,translations.subtitle,translations.description"
+  )
+  if (existing) {
+    const translation = (existing.translations || []).find(item => item.languages_code === catalan.code)
+    const comparison = {
+      expected: { year_label: yearLabel, title: yearLabel },
+      actual: translation ? { year_label: translation.year_label, title: translation.title } : null,
+      matches: Boolean(translation && translation.year_label === yearLabel && translation.title === yearLabel),
+    }
+    report.actions.push({ action: "compare_existing_biography", reference, id: existing.id, existing, comparison })
+    if (!comparison.matches) report.warnings.push(`L'event existent ${reference} no coincideix en year_label/title ca`)
+    report.skipped.push({ type: "biography", reference, reason: "reference already exists", id: existing.id })
+    return report
+  }
+
+  const conversion = markdownToHtml(paragraph.text)
+  if (conversion.incidents.length) {
+    throw new Error(`MDX/JSX no convertible a about.paragraphs[${index}].text: ${conversion.incidents.join(", ")}`)
+  }
+
+  let imageId
+  if (paragraph.image !== undefined && paragraph.image !== null && paragraph.image !== "") {
+    const imageFilename = path.resolve(path.dirname(filename), String(paragraph.image))
+    if (!fs.existsSync(imageFilename)) throw new Error(`No existeix about.paragraphs[${index}].image: ${paragraph.image}`)
+    imageId = await uploadFile(
+      imageFilename, BIOGRAPHY_ASSET_FOLDER, fileCache, fileMap, uploadedFilesThisRun, report
+    )
+  }
+
+  const payload = {
+    reference,
+    reference_date: referenceDate,
+    sort: index + 1,
+    status: "published",
+    translations: [biographyTranslation(paragraph, yearLabel, catalan.code, conversion.html)],
+  }
+  if (imageId !== undefined) payload.image = imageId
+
+  report.actions.push({
+    action: "create_biography_with_translation",
+    endpoint: "/items/biography_events",
+    payload,
+    source: path.relative(projectRoot, filename).replaceAll("\\", "/"),
+    legacyIndex: index,
+    excluded: paragraph._subtitle === undefined ? [] : ["_subtitle"],
+    schemaFolder: BIOGRAPHY_ASSET_FOLDER,
+  })
+  return report
+}
+
+async function runAllBiography(options) {
+  const entries = listBiographyEntries()
+  const report = {
+    mode: "dry-run", dryRun: true, type: "biography", all: true,
+    created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [],
+  }
+  const fileMap = loadFileMap()
+  const fileCache = new Map()
+  for (const entry of entries) {
+    const item = {
+      mode: "dry-run", dryRun: true, type: "biography", reference: entry.reference,
+      created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [],
+    }
+    try {
+      await runBiography({ ...options, reference: entry.reference }, item, fileMap, fileCache, [])
+    } catch (error) {
+      item.errors.push(error.message)
+    }
+    const status = item.errors.length ? "ERROR" : item.skipped.length ? "SKIPPED" : item.warnings.length ? "WARNING" : "WOULD_CREATE"
+    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings: item.warnings, errors: item.errors })
+    report.skipped.push(...item.skipped)
+    report.actions.push(...item.actions)
+    if (item.warnings.length) report.warnings.push({ reference: entry.reference, reasons: item.warnings })
+    if (item.errors.length) report.errors.push({ reference: entry.reference, reasons: item.errors })
+  }
+  report.summary = {
+    TOTAL: entries.length,
+    WOULD_CREATE: report.results.filter(item => item.status === "WOULD_CREATE").length,
+    SKIPPED: report.results.filter(item => item.status === "SKIPPED").length,
+    SKIPPED_ARTWORKS: report.results.filter(item => item.status === "SKIPPED").length,
+    WARNINGS: report.results.filter(item => item.status === "WARNING").length,
+    ERRORS: report.results.filter(item => item.status === "ERROR").length,
+  }
+  report.skippedReferences = report.results.filter(item => item.status === "SKIPPED").map(item => item.reference)
+  report.warningReferences = report.results.filter(item => item.status === "WARNING").map(item => ({ reference: item.reference, reasons: item.warnings }))
+  report.errorReferences = report.results.filter(item => item.status === "ERROR").map(item => ({ reference: item.reference, reasons: item.errors }))
+  return report
+}
+
 function runAllPages(options) {
   const allEntries = listPageEntries()
   const excluded = allEntries.filter(entry => EXCLUDED_PAGE_REFERENCES.has(entry.reference))
@@ -872,7 +1041,11 @@ function runAllArtworks(options) {
 async function run() {
   const options = parseArguments(process.argv.slice(2))
   requiredEnvironment()
-  if (options.all) return options.type === "pages" ? runAllPages(options) : runAllArtworks(options)
+  if (options.all) {
+    if (options.type === "pages") return runAllPages(options)
+    if (options.type === "biography") return runAllBiography(options)
+    return runAllArtworks(options)
+  }
   const report = { mode: options.dryRun ? "dry-run" : "write", dryRun: options.dryRun, type: options.type, reference: options.reference, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [] }
   const uploadedFilesThisRun = []
   const fileMap = loadFileMap()
@@ -886,6 +1059,9 @@ async function run() {
     }
     if (options.type === "pages") {
       return await runPage(options, report, fileMap, fileCache, uploadedFilesThisRun)
+    }
+    if (options.type === "biography") {
+      return await runBiography(options, report, fileMap, fileCache, uploadedFilesThisRun)
     }
     const { filename, parsed } = findArtworkFile(options.reference)
     const data = parsed.data
@@ -1007,7 +1183,7 @@ if (process.env.MIGRATION_JSON_ONLY === "1") {
     if (report.type === "pages") console.log("EXCLUDED: " + report.summary.EXCLUDED)
     if (report.dryRun) console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
     else console.log("CREATED ARTWORKS: " + report.summary.CREATED_ARTWORKS)
-    console.log((report.type === "artwork" ? "SKIPPED ARTWORKS: " : "SKIPPED: ") + report.summary.SKIPPED_ARTWORKS)
+    console.log((report.type === "artwork" ? "SKIPPED ARTWORKS: " : "SKIPPED: ") + (report.summary.SKIPPED ?? report.summary.SKIPPED_ARTWORKS))
     console.log("WARNINGS: " + report.summary.WARNINGS)
     console.log("ERRORS: " + report.summary.ERRORS)
     if (!report.dryRun) {

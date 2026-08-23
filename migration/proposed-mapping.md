@@ -73,8 +73,10 @@ Import the existing Catalan source values into `*_translations` using `languages
 | pages | body | pages_translations.body | safe | create only languages_code=ca; convert Markdown/compatible MDX to HTML, preserve existing HTML, and report unconvertible JSX/MDX |
 | pages | seo.* | pages_translations.seo_* + pages.seo_image | safe | upload file first |
 | pages | title/subtitle | pages_translations.title/subtitle | probable | some page documents have no title; manual/default title needed |
-| biography_events | about.paragraphs[].title | biography_events_translations.year_label | safe | preserve the exact visible legacy value |
-| biography_events | about.paragraphs[].subtitle/text | biography_events_translations.title/description | safe | copy subtitle to title when present and text to description; title may be empty and must not be invented (schema still marks title required) |
+| biography_events | about.paragraphs[].title | biography_events_translations.year_label + title | safe | copy the exact legacy year to both fields, matching the approved policy and the 13 corrected existing events |
+| biography_events | about.paragraphs[].subtitle | biography_events_translations.subtitle | safe | Gatsby rendered this field as the event subtitle; omit it for the three entries where it is absent |
+| biography_events | about.paragraphs[].text | biography_events_translations.description | safe | preserve existing HTML and convert only compatible Markdown/MDX |
+| biography_events | about.paragraphs[]._subtitle | none | excluded | present in three entries but never queried or rendered by the legacy Gatsby page; do not reinterpret it as title |
 | biography_events | most precise available legacy date or year_label | biography_events.reference_date | safe | use the precise date when available; otherwise YYYY becomes synthetic YYYY-01-01 12:00 Europe/Madrid for ordering only and must not be presented as historically known |
 | biography_events | reference_date | biography_events.reference | safe | generate deterministic YYYYMMDD with -02, -03, ... collisions in stable source order |
 | biography_events | about.paragraphs[].image | biography_events.image/images | probable | ignore empty strings; upload files |
@@ -111,8 +113,9 @@ Import the existing Catalan source values into `*_translations` using `languages
 - hide → pages.status
 - body → pages_translations.body
 - seo.* → pages_translations.seo_* + pages.seo_image
-- about.paragraphs[].title → biography_events_translations.year_label
-- about.paragraphs[].subtitle/text → biography_events_translations.title/description
+- about.paragraphs[].title → biography_events_translations.year_label and biography_events_translations.title
+- about.paragraphs[].subtitle → biography_events_translations.subtitle
+- about.paragraphs[].text → biography_events_translations.description
 - most precise available legacy date or year_label → biography_events.reference_date
 - reference_date → biography_events.reference
 - press.paragraphs[].date → press_articles.reference_date
@@ -122,7 +125,8 @@ Import the existing Catalan source values into `*_translations` using `languages
 
 ## Manual decisions required
 
-
+- **Existing biography references** — use the approved explicit overrides for legacy indexes 0–12 (`1986-born` through `2019-artista-visual`) so append-only lookup skips the 13 corrected events. New events use deterministic date-based references; never fuzzy-match at runtime.
+- **Biography order** — persist legacy index + 1 in `biography_events.sort`; Gatsby must use `reference_date` plus `sort` deterministically so equal-year entries retain legacy order under `DESC`.
 
 - **press_articles: no explicit source → press_articles.media** — required field has no approved legacy mapping; do not infer it from author or domain
 
