@@ -143,16 +143,15 @@ function parseArguments(argv) {
   }
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
   if (result.all && !["artwork", "pages", "biography"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork, pages o biography")
-  if (["pages", "biography"].includes(result.type) && result.all && !result.dryRun) throw new Error(`--type ${result.type} --all només està suportat amb --dry-run`)
-  if (result.type === "artwork" && result.all && !result.dryRun && !result.confirmBatch) {
+  if (result.type === "pages" && result.all && !result.dryRun) throw new Error("--type pages --all només està suportat amb --dry-run")
+  if (["artwork", "biography"].includes(result.type) && result.all && !result.dryRun && !result.confirmBatch) {
     throw new Error("El batch real requereix --confirm-batch")
   }
-  if (result.confirmBatch && (!result.all || result.dryRun)) {
-    throw new Error("--confirm-batch només és vàlid per --type artwork --all sense --dry-run")
+  if (result.confirmBatch && (!result.all || result.dryRun || !["artwork", "biography"].includes(result.type))) {
+    throw new Error("--confirm-batch només és vàlid per --type artwork o biography --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
   if (!["artwork", "series", "vocabulary", "pages", "biography"].includes(result.type)) throw new Error("Tipus no suportat")
-  if (result.type === "biography" && !result.dryRun) throw new Error("--type biography només està suportat amb --dry-run de moment")
   if (result.type === "vocabulary" && !result.collection) throw new Error("Falta --collection <collection>")
   return result
 }
@@ -815,42 +814,99 @@ async function runBiography(options, report, fileMap, fileCache, uploadedFilesTh
     excluded: paragraph._subtitle === undefined ? [] : ["_subtitle"],
     schemaFolder: BIOGRAPHY_ASSET_FOLDER,
   })
+  if (options.dryRun) return report
+
+  const created = await directusRequest("items/biography_events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  report.created.push({ type: "biography", id: created.data?.id, reference })
   return report
 }
 
-async function runAllBiography(options) {
+function runAllBiography(options) {
   const entries = listBiographyEntries()
   const report = {
-    mode: "dry-run", dryRun: true, type: "biography", all: true,
+    mode: options.dryRun ? "dry-run" : "write",
+    dryRun: options.dryRun,
+    type: "biography",
+    all: true,
     created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [],
   }
-  const fileMap = loadFileMap()
-  const fileCache = new Map()
+
   for (const entry of entries) {
-    const item = {
-      mode: "dry-run", dryRun: true, type: "biography", reference: entry.reference,
-      created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [],
-    }
+    // Cada event s'executa en un procés aïllat. El rollback i els uploads
+    // d'aquesta execució no poden afectar events anteriors. El file-map
+    // SHA-256 continua sent persistent i compartit entre processos.
+    const childArguments = [
+      fileURLToPath(import.meta.url), "--type", "biography", "--reference", entry.reference,
+    ]
+    if (options.dryRun) childArguments.splice(1, 0, "--dry-run")
+    const child = spawnSync(process.execPath, childArguments, {
+      cwd: projectRoot,
+      env: { ...process.env, MIGRATION_JSON_ONLY: "1" },
+      encoding: "utf8",
+      maxBuffer: 20 * 1024 * 1024,
+    })
+
+    let item
     try {
-      await runBiography({ ...options, reference: entry.reference }, item, fileMap, fileCache, [])
-    } catch (error) {
-      item.errors.push(error.message)
+      item = JSON.parse(child.stdout)
+    } catch {
+      item = {
+        created: [], rolledBack: [], skipped: [], warnings: [], actions: [],
+        errors: ["No s'ha pogut interpretar el resultat de biography" + (child.stderr ? ": " + child.stderr.trim() : "")],
+      }
     }
-    const status = item.errors.length ? "ERROR" : item.skipped.length ? "SKIPPED" : item.warnings.length ? "WARNING" : "WOULD_CREATE"
-    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings: item.warnings, errors: item.errors })
-    report.skipped.push(...item.skipped)
-    report.actions.push(...item.actions)
-    if (item.warnings.length) report.warnings.push({ reference: entry.reference, reasons: item.warnings })
-    if (item.errors.length) report.errors.push({ reference: entry.reference, reasons: item.errors })
+
+    const created = item.created || []
+    const rolledBack = item.rolledBack || []
+    const skipped = item.skipped || []
+    const warnings = item.warnings || []
+    const errors = item.errors || []
+    const actions = item.actions || []
+    const eventCreated = created.some(createdItem => createdItem.type === "biography")
+    const status = errors.length
+      ? "ERROR"
+      : skipped.length
+        ? "SKIPPED"
+        : warnings.length
+          ? "WARNING"
+          : options.dryRun
+            ? "WOULD_CREATE"
+            : eventCreated
+              ? "CREATED"
+              : "ERROR"
+    const normalizedErrors = status === "ERROR" && !errors.length
+      ? ["L'execució no ha creat ni omès l'event biogràfic"]
+      : errors
+
+    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings, errors: normalizedErrors })
+    report.created.push(...created)
+    report.rolledBack.push(...rolledBack)
+    report.skipped.push(...skipped)
+    report.actions.push(...actions)
+    if (warnings.length) report.warnings.push({ reference: entry.reference, reasons: warnings })
+    if (normalizedErrors.length) report.errors.push({ reference: entry.reference, reasons: normalizedErrors })
   }
+
+  const createdReferences = report.created
+    .filter(item => item.type === "biography")
+    .map(item => item.reference)
   report.summary = {
     TOTAL: entries.length,
     WOULD_CREATE: report.results.filter(item => item.status === "WOULD_CREATE").length,
+    CREATED_EVENTS: createdReferences.length,
     SKIPPED: report.results.filter(item => item.status === "SKIPPED").length,
     SKIPPED_ARTWORKS: report.results.filter(item => item.status === "SKIPPED").length,
     WARNINGS: report.results.filter(item => item.status === "WARNING").length,
     ERRORS: report.results.filter(item => item.status === "ERROR").length,
+    FILES_UPLOADED: report.created.filter(item => item.type === "file").length,
+    FILES_REUSED: report.actions.filter(action => String(action.disposition || "").startsWith("REUSE")).length,
+    FILES_ROLLED_BACK: report.rolledBack.filter(item => item.type === "file").length,
   }
+  report.createdReferences = createdReferences
   report.skippedReferences = report.results.filter(item => item.status === "SKIPPED").map(item => item.reference)
   report.warningReferences = report.results.filter(item => item.status === "WARNING").map(item => ({ reference: item.reference, reasons: item.warnings }))
   report.errorReferences = report.results.filter(item => item.status === "ERROR").map(item => ({ reference: item.reference, reasons: item.errors }))
@@ -1182,7 +1238,7 @@ if (process.env.MIGRATION_JSON_ONLY === "1") {
     console.log((report.type === "pages" ? "TOTAL MIGRABLE: " : "TOTAL: ") + report.summary.TOTAL)
     if (report.type === "pages") console.log("EXCLUDED: " + report.summary.EXCLUDED)
     if (report.dryRun) console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
-    else console.log("CREATED ARTWORKS: " + report.summary.CREATED_ARTWORKS)
+    else console.log((report.type === "biography" ? "CREATED EVENTS: " : "CREATED ARTWORKS: ") + (report.summary.CREATED_EVENTS ?? report.summary.CREATED_ARTWORKS))
     console.log((report.type === "artwork" ? "SKIPPED ARTWORKS: " : "SKIPPED: ") + (report.summary.SKIPPED ?? report.summary.SKIPPED_ARTWORKS))
     console.log("WARNINGS: " + report.summary.WARNINGS)
     console.log("ERRORS: " + report.summary.ERRORS)
