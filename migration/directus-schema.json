@@ -4866,6 +4866,50 @@
         }
       },
       {
+        "collection": "artworks_files",
+        "field": "sort",
+        "type": "integer",
+        "meta": {
+          "collection": "artworks_files",
+          "conditions": null,
+          "display": null,
+          "display_options": null,
+          "field": "sort",
+          "group": null,
+          "hidden": true,
+          "interface": "input",
+          "note": null,
+          "options": null,
+          "readonly": false,
+          "required": false,
+          "searchable": true,
+          "sort": 4,
+          "special": null,
+          "translations": null,
+          "validation": null,
+          "validation_message": null,
+          "width": "full"
+        },
+        "schema": {
+          "name": "sort",
+          "table": "artworks_files",
+          "data_type": "integer",
+          "default_value": null,
+          "max_length": null,
+          "numeric_precision": 32,
+          "numeric_scale": 0,
+          "is_nullable": true,
+          "is_unique": false,
+          "is_indexed": false,
+          "is_primary_key": false,
+          "is_generated": false,
+          "generation_expression": null,
+          "has_auto_increment": false,
+          "foreign_key_table": null,
+          "foreign_key_column": null
+        }
+      },
+      {
         "collection": "artworks_series",
         "field": "id",
         "type": "integer",
@@ -15128,7 +15172,7 @@
           "one_collection_field": null,
           "one_deselect_action": "nullify",
           "one_field": "other_images",
-          "sort_field": null
+          "sort_field": "sort"
         },
         "schema": {
           "table": "artworks_files",

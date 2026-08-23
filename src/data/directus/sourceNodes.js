@@ -91,7 +91,8 @@ const createImages = async (item, translation, parentNodeId, helpers) => {
   const mainFile = await downloadFile(item.main_image, parentNodeId, helpers)
   const otherFiles = []
   const otherNodeIds = []
-  for (const relation of array(item.other_images)) {
+  const orderedOtherImages = [...array(item.other_images)].sort(dimensionOrder)
+  for (const relation of orderedOtherImages) {
     const file = await downloadFile(relationId(relation, "directus_files_id"), parentNodeId, helpers)
     if (file) {
       otherFiles.push(file.relativePath)
@@ -160,6 +161,18 @@ const dimensionOrder = (left, right) => {
   const rightSort = Number.isFinite(Number(right?.sort)) ? Number(right.sort) : Number.MAX_SAFE_INTEGER
   return leftSort - rightSort || Number(left?.id || 0) - Number(right?.id || 0)
 }
+const artworkOrientation = sizes => {
+  if (!sizes.length) return "Free"
+  let height = 0
+  let width = 0
+  for (const size of sizes) {
+    height += size.cm.height
+    width += size.cm.width
+  }
+  if (height === width) return "Square"
+  if (height > width) return "Portrait"
+  return "Landscape"
+}
 const artworkSizes = dimensions => array(dimensions)
   .filter(dimension => dimension?.height_cm !== null && dimension?.height_cm !== undefined
     && dimension?.width_cm !== null && dimension?.width_cm !== undefined)
@@ -182,7 +195,7 @@ const artworkSizes = dimensions => array(dimensions)
 
 const ARTWORK_FIELDS = [
   "id", "reference", "sort", "date", "date_created", "date_updated", "show_on_home",
-  "main_image", "other_images.directus_files_id", "seo_image",
+  "main_image", "other_images.id", "other_images.sort", "other_images.directus_files_id", "seo_image",
   "dimensions.id", "dimensions.sort", "dimensions.height_cm", "dimensions.width_cm", "dimensions.depth_cm",
   "sale_status", "show_sale_status", "price_eur", "show_price", "quote_author", "show_quote",
   "primary_serie.id", "primary_serie.reference",
@@ -398,7 +411,7 @@ exports.sourceDirectusNodes = async helpers => {
         classification: {
           serie: serieReference,
           category: "Painting",
-          orientation: "Free",
+          orientation: artworkOrientation(sizes),
           technique: formatLocalizedList(relatedNames(item.technique, "artwork_tecniques_id", lang), lang),
           composition: formatLocalizedList(relatedNames(item.composition, "artwork_composition_id", lang), lang),
           surface: formatLocalizedList(relatedNames(item.surface, "artwork_surfaces_id", lang), lang),

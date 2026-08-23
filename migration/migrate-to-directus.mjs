@@ -4,6 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 import crypto from "node:crypto"
 import process from "node:process"
+import { spawnSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import matter from "gray-matter"
 import dotenv from "dotenv"
@@ -31,6 +32,12 @@ const seriesSeoImageField = directusSchema.fields.find(
 )
 const seriesDateField = directusSchema.fields.find(
   field => field.collection === "series" && field.field === "date"
+)
+const artworkSaleStatusField = directusSchema.fields.find(
+  field => field.collection === "artworks" && field.field === "sale_status"
+)
+const ARTWORK_SALE_STATUSES = new Set(
+  (artworkSaleStatusField?.meta?.options?.choices || []).map(choice => choice.value)
 )
 const ARTWORKS_ASSET_FOLDER = artworkMainImageField?.meta?.options?.folder
 const SERIES_ASSET_FOLDER = seriesMainImageField?.meta?.options?.folder
@@ -83,23 +90,53 @@ const AUTHORIZED_VOCABULARY_CREATES = {
   "artwork_styles:textures": { collection: "artwork_styles", reference: "textures", nameCa: "Textures" },
   "artwork_surfaces:wood": { collection: "artwork_surfaces", reference: "wood", nameCa: "Fusta" },
 }
+// Correccions explícites de referències legacy malformades, verificades contra
+// els fitxers físics. No s'aplica cap normalització heurística a altres obres.
+const OTHER_IMAGE_OVERRIDES = Object.freeze({
+  "follow-the-sun": ["02.jpg", "03.jpg", "04.jpg", "05.jpg"],
+  iraia: ["02.jpg", "03.jpg", "04.jpg", "05.jpg"],
+  "vandana-shiva": ["02.jpg", "03.jpg"],
+})
 
 function parseArguments(argv) {
-  const result = { dryRun: false, reference: null, type: "artwork", collection: null }
+  const result = { dryRun: false, all: false, reference: null, type: "artwork", collection: null }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === "--dry-run") result.dryRun = true
+    else if (argument === "--all") result.all = true
     else if (argument === "--reference") result.reference = argv[++index]
     else if (argument === "--type") result.type = argv[++index]
     else if (argument === "--collection") result.collection = argv[++index]
     else throw new Error(`Argument desconegut: ${argument}`)
   }
-  if (!result.reference) throw new Error("Falta --reference <reference>")
+  if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
+  if (result.all && (!result.dryRun || result.type !== "artwork")) {
+    throw new Error("--all només està suportat amb --dry-run --type artwork")
+  }
+  if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
   if (!["artwork", "series", "vocabulary"].includes(result.type)) throw new Error("Tipus no suportat")
   if (result.type === "vocabulary" && !result.collection) throw new Error("Falta --collection <collection>")
   return result
 }
 
+function listArtworkEntries() {
+  const paintsRoot = path.join(projectRoot, "content", "paints")
+  const entries = []
+  for (const serieEntry of fs.readdirSync(paintsRoot, { withFileTypes: true })) {
+    if (!serieEntry.isDirectory()) continue
+    const seriePath = path.join(paintsRoot, serieEntry.name)
+    for (const artworkEntry of fs.readdirSync(seriePath, { withFileTypes: true })) {
+      if (!artworkEntry.isDirectory()) continue
+      for (const basename of ["paint.mdx", "paint.md"]) {
+        const filename = path.join(seriePath, artworkEntry.name, basename)
+        if (!fs.existsSync(filename)) continue
+        const parsed = matter(fs.readFileSync(filename, "utf8"))
+        entries.push({ filename, reference: parsed.data.reference || artworkEntry.name })
+      }
+    }
+  }
+  return entries.sort((left, right) => left.reference.localeCompare(right.reference))
+}
 function requiredEnvironment() {
   const names = [
     "DIRECTUS_URL",
@@ -312,7 +349,7 @@ async function uploadFile(filename, folder, cache, fileMap, uploadedFilesThisRun
   const plan = filePlan(filename)
   if (cache.has(plan.sha256)) {
     const cached = cache.get(plan.sha256)
-    report.actions.push({ action: "reuse_file_this_run", sha256: plan.sha256, id: cached })
+    report.actions.push({ action: "reuse_file_this_run", disposition: "REUSE_THIS_RUN", sha256: plan.sha256, id: cached })
     return cached
   }
 
@@ -321,7 +358,7 @@ async function uploadFile(filename, folder, cache, fileMap, uploadedFilesThisRun
     const existing = await directusFileExists(mapped.id)
     if (existing) {
       cache.set(plan.sha256, mapped.id)
-      report.actions.push({ action: "reuse_migrated_file", sha256: plan.sha256, id: mapped.id, validated: true })
+      report.actions.push({ action: "reuse_migrated_file", disposition: "REUSE_MIGRATED", sha256: plan.sha256, id: mapped.id, validated: true })
       return mapped.id
     }
     report.warnings.push(`Entrada obsoleta al file-map per ${plan.sha256}; ${mapped.id} ja no existeix`)
@@ -334,7 +371,7 @@ async function uploadFile(filename, folder, cache, fileMap, uploadedFilesThisRun
   if (report.dryRun) {
     const plannedId = `<new-directus-file:${plan.sha256.slice(0, 12)}>`
     cache.set(plan.sha256, plannedId)
-    report.actions.push({ action: "upload_file", folder, folderSource: "migration/directus-schema.json", file: plan })
+    report.actions.push({ action: "upload_file", disposition: "UPLOAD", folder, folderSource: "migration/directus-schema.json", file: plan })
     return plannedId
   }
 
@@ -383,7 +420,15 @@ async function rollbackUploadedFiles(uploadedFilesThisRun, fileMap, report, orig
     }
   }
 }
-function buildBasePayload(data, effectiveReference, resolved, mainImageId, bodyHtml) {
+function buildBasePayload(
+  data,
+  effectiveReference,
+  resolved,
+  mainImageId,
+  seoImageId,
+  otherImageIds,
+  bodyHtml
+) {
   const payload = {
     reference: effectiveReference,
     status: data.hide === true ? "archived" : "published",
@@ -391,10 +436,22 @@ function buildBasePayload(data, effectiveReference, resolved, mainImageId, bodyH
     translations: [translationFrom(data, bodyHtml, resolved.languageCode)],
     dimensions: dimensionsFrom(data.sizes),
   }
+  if (seoImageId !== undefined) payload.seo_image = seoImageId
+  if (otherImageIds.length) {
+    payload.other_images = otherImageIds.map((id, index) => ({
+      directus_files_id: id,
+      sort: index + 1,
+    }))
+  }
   if (data.order !== undefined) payload.sort = Number(data.order)
   if (data.date !== undefined) payload.date = madridNoon(data.date)
   if (data.showOnMainScreen !== undefined) payload.show_on_home = Boolean(data.showOnMainScreen)
-  if (data.sellingData?.productState !== undefined) payload.sale_status = data.sellingData.productState
+  if (data.sellingData?.productState !== undefined) {
+    if (!ARTWORK_SALE_STATUSES.has(data.sellingData.productState)) {
+      throw new Error("sellingData.productState fora de l'enum Directus: " + data.sellingData.productState)
+    }
+    payload.sale_status = data.sellingData.productState
+  }
   if (data.sellingData?.showProductState !== undefined) payload.show_sale_status = Boolean(data.sellingData.showProductState)
   if (data.sellingData?.priceEur !== undefined) payload.price_eur = Number(data.sellingData.priceEur)
   if (data.sellingData?.showPrice !== undefined) payload.show_price = Boolean(data.sellingData.showPrice)
@@ -518,9 +575,72 @@ async function runSeries(options, report, fileMap, fileCache, uploadedFilesThisR
   report.created.push({ type: "series", id: created.data?.id, reference: effectiveReference })
   return report
 }
+function runAllArtworks() {
+  const entries = listArtworkEntries()
+  const references = new Map()
+  for (const entry of entries) {
+    const group = references.get(entry.reference) || []
+    group.push(entry.filename)
+    references.set(entry.reference, group)
+  }
+
+  const report = {
+    mode: "dry-run", dryRun: true, type: "artwork", all: true,
+    created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [],
+  }
+
+  for (const [reference, filenames] of references) {
+    if (filenames.length > 1) {
+      const reason = "Reference legacy duplicada: " + reference
+      report.errors.push({ reference, reason, files: filenames.map(filename => path.relative(projectRoot, filename).replaceAll("\\", "/")) })
+      report.results.push({ reference, status: "ERROR", warnings: [], errors: [reason] })
+      continue
+    }
+
+    const child = spawnSync(process.execPath, [
+      fileURLToPath(import.meta.url), "--dry-run", "--type", "artwork", "--reference", reference,
+    ], {
+      cwd: projectRoot,
+      env: { ...process.env, MIGRATION_JSON_ONLY: "1" },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    })
+
+    let item
+    try {
+      item = JSON.parse(child.stdout)
+    } catch {
+      item = {
+        skipped: [], warnings: [],
+        errors: ["No s'ha pogut interpretar el resultat del dry-run" + (child.stderr ? ": " + child.stderr.trim() : "")],
+      }
+    }
+    const errors = item.errors || []
+    const warnings = item.warnings || []
+    const skipped = item.skipped || []
+    const status = errors.length ? "ERROR" : skipped.length ? "SKIPPED" : warnings.length ? "WARNING" : "WOULD_CREATE"
+    report.results.push({ reference, status, warnings, errors })
+    if (skipped.length) report.skipped.push(...skipped)
+    if (warnings.length) report.warnings.push({ reference, reasons: warnings })
+    if (errors.length) report.errors.push({ reference, reasons: errors })
+  }
+
+  report.summary = {
+    TOTAL: entries.length,
+    WOULD_CREATE: report.results.filter(result => result.status === "WOULD_CREATE").length,
+    SKIPPED: report.results.filter(result => result.status === "SKIPPED").length,
+    WARNINGS: report.results.filter(result => result.status === "WARNING").length,
+    ERRORS: report.results.filter(result => result.status === "ERROR").length,
+  }
+  report.skippedReferences = report.results.filter(result => result.status === "SKIPPED").map(result => result.reference)
+  report.warningReferences = report.results.filter(result => result.status === "WARNING").map(result => ({ reference: result.reference, reasons: result.warnings }))
+  report.errorReferences = report.results.filter(result => result.status === "ERROR").map(result => ({ reference: result.reference, reasons: result.errors }))
+  return report
+}
 async function run() {
   const options = parseArguments(process.argv.slice(2))
   requiredEnvironment()
+  if (options.all) return runAllArtworks()
   const report = { mode: options.dryRun ? "dry-run" : "write", dryRun: options.dryRun, type: options.type, reference: options.reference, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [] }
   const uploadedFilesThisRun = []
   const fileMap = loadFileMap()
@@ -571,7 +691,47 @@ async function run() {
     const mainImageId = await uploadFile(
       mainFilename, ARTWORKS_ASSET_FOLDER, fileCache, fileMap, uploadedFilesThisRun, report
     )
-    const payload = buildBasePayload(data, effectiveReference, resolved, mainImageId, conversion.html)
+    let seoImageId
+    if (data.seo?.image) {
+      const seoFilename = path.resolve(path.dirname(filename), String(data.seo.image))
+      if (!fs.existsSync(seoFilename)) throw new Error(`No existeix seo.image: ${data.seo.image}`)
+      seoImageId = await uploadFile(
+        seoFilename, ARTWORKS_ASSET_FOLDER, fileCache, fileMap, uploadedFilesThisRun, report
+      )
+    }
+
+    const overriddenOtherImages = OTHER_IMAGE_OVERRIDES[effectiveReference]
+    if (overriddenOtherImages) {
+      report.actions.push({
+        action: "apply_explicit_other_images_override",
+        reference: effectiveReference,
+        values: overriddenOtherImages,
+      })
+    }
+    const legacyOtherImages = overriddenOtherImages || data.image?.otherImages
+    if (legacyOtherImages !== undefined && !Array.isArray(legacyOtherImages)) {
+      throw new Error("image.otherImages ha de ser un array")
+    }
+    const otherImageIds = []
+    for (const [index, otherRelative] of (legacyOtherImages || []).entries()) {
+      const otherFilename = path.resolve(path.dirname(filename), String(otherRelative))
+      if (!fs.existsSync(otherFilename)) {
+        throw new Error(`No existeix image.otherImages[${index}]: ${otherRelative}`)
+      }
+      otherImageIds.push(await uploadFile(
+        otherFilename, ARTWORKS_ASSET_FOLDER, fileCache, fileMap, uploadedFilesThisRun, report
+      ))
+    }
+
+    const payload = buildBasePayload(
+      data,
+      effectiveReference,
+      resolved,
+      mainImageId,
+      seoImageId,
+      otherImageIds,
+      conversion.html
+    )
     report.actions.push({ action: "create_artwork_with_relations", endpoint: "/items/artworks", payload, resolved })
 
     if (options.dryRun) return report
@@ -603,9 +763,21 @@ const report = await run().catch(error => ({
   actions: [],
 }))
 
-console.log(JSON.stringify(report, null, 2))
-console.log(`CREATED: ${report.created.length}`)
-console.log(`SKIPPED: ${report.skipped.length}`)
-console.log(`WARNING: ${report.warnings.length}`)
-console.log(`ERROR: ${report.errors.length}`)
+if (process.env.MIGRATION_JSON_ONLY === "1") {
+  console.log(JSON.stringify(report))
+} else {
+  console.log(JSON.stringify(report, null, 2))
+  if (report.summary) {
+    console.log("TOTAL: " + report.summary.TOTAL)
+    console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
+    console.log("SKIPPED: " + report.summary.SKIPPED)
+    console.log("WARNINGS: " + report.summary.WARNINGS)
+    console.log("ERRORS: " + report.summary.ERRORS)
+  } else {
+    console.log("CREATED: " + report.created.length)
+    console.log("SKIPPED: " + report.skipped.length)
+    console.log("WARNING: " + report.warnings.length)
+    console.log("ERROR: " + report.errors.length)
+  }
+}
 if (report.errors.length) process.exitCode = 1

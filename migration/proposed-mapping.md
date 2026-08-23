@@ -52,12 +52,13 @@ Import the existing Catalan source values into `*_translations` using `languages
 | artworks | hide | artworks.status | safe | true → archived; false or absent → published |
 | artworks | title/subtitle/description + MDX body | artworks_translations.title/subtitle/description/body | safe | create only languages_code=ca; convert Markdown/compatible MDX body to HTML, preserve existing HTML, and report unconvertible JSX/MDX without silently dropping it |
 | artworks | seo.description/seo.keywords/seo.image | artworks_translations.seo_description/seo_keywords + artworks.seo_image | safe | upload and resolve file IDs |
-| artworks | image.main/image.otherImages | artworks.main_image/artworks.other_images via artworks_files | safe | upload files first; preserve ordering |
+| artworks | image.main/image.otherImages | artworks.main_image/artworks.other_images via artworks_files | safe | upload files first; map the zero-based legacy array position to artworks_files.sort starting at 1 |
 | artworks | sizes[].cm.height/width + array index | artwork_dimensions.height_cm/width_cm/sort linked by artworks_id | safe | create one ordered artwork_dimensions row per sizes[] element; preserve all panels |
 | artworks | sizes[].cm.depth or sizes[].cm.breadth | artwork_dimensions.depth_cm | safe | prefer cm.depth; otherwise use legacy cm.breadth as the third dimension/depth; if neither exists omit depth_cm so Directus applies its schema default |
 | artworks | none | legacy scalar artworks.height_cm/width_cm/depth_cm | excluded | ignore during migration; fields are temporary preservation fields and will be removed manually after transfer |
 | artworks | classification.serie | artworks.primary_serie | safe | resolve case-insensitively against series reference/title; leave alternative_series empty because the legacy model contains one series only |
 | artworks | classification.technique/style/composition/surface | technique/styles/composition/surface relations and vocabulary collections | safe | use the explicit table in vocabulary-map-proposal.md; split confirmed compounds; Undefined means no style; never fuzzy-match |
+| artworks | classification.orientation | no Directus storage; Gatsby classification.orientation | derived | exclude from storage and derive with the legacy height/width aggregation over ordered sizes: Square, Portrait, Landscape, or Free when unavailable |
 | artworks | classification.tags/tags | artworks.tags via artworks_tags and tags(_translations) | safe | no non-empty legacy tags exist, so create no tags or tag relations |
 | artworks | sellingData.productState/showProductState/priceEur/showPrice | sale_status/show_sale_status/price_eur/show_price | safe | copy explicit legacy values; omit any absent field so Directus applies its schema default |
 | artworks | quote.text | artworks_translations.quote_text | safe | create only languages_code=ca |
@@ -128,6 +129,11 @@ Import the existing Catalan source values into `*_translations` using `languages
 ## Explicitly excluded
 
 - **series `filosofes`: `quote.authorTitle`** — exclude from migration. It was legacy metadata not rendered by the series page, and Directus has no semantically equivalent field; do not change the schema or fold it into another quote field.
+- **artworks: `lastModificationDate`** — exclude from migration. `date_created` and `date_updated` are Directus-managed audit fields; do not recreate legacy timestamps artificially.
+- **artworks: `pageName`** — exclude from migration. Gatsby derives it from the canonical `reference`.
+- **artworks: `url`** — exclude from migration. Gatsby builds it deterministically from `reference` and language.
+- **artworks: `classification.orientation` storage** — exclude from Directus storage and derive in Gatsby from ordered dimensions using the legacy algorithm.
+- **artwork `mediterranean-mother`: `quote-0` and `quote-2`** — exclude from migration. Gatsby never read, typed or rendered these unused legacy alternatives; preserve only canonical `quote`.
 
 - **artworks: none** — ignore during migration; fields are temporary preservation fields and will be removed manually after transfer
 - **exhibitions: content/pageTexts/exhibitions/** and exhibition-like prose** — do not import placeholder data; future exhibition content will be authored directly in Directus
@@ -157,7 +163,7 @@ Import the existing Catalan source values into `*_translations` using `languages
 
 - Multiple panels are preserved as multiple ordered `artwork_dimensions` rows.
 - Unconvertible JSX/MDX is an incident requiring review, never content to discard silently.
-- Legacy `pageName` and `url` have no necessary destination when `reference` is canonical, but mismatches must be reviewed before dropping them.
+- Legacy `pageName`, `url` and `lastModificationDate` are explicitly excluded according to the decisions above.
 - Legacy fields beginning with an underscore (for example `_subtitle`) have no explicit Directus destination.
 - Blog and exhibition placeholder content are intentionally excluded.
 - Page `paragraphs` structures do not belong to `pages_translations`; only the about and press lists have probable dedicated destinations.

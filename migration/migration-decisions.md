@@ -628,7 +628,16 @@ Inventory only. No Directus collection is proposed.
 
 - Decide whether the legacy `sizes[].cm.breadth` field means Directus `depth_cm`; no automatic equivalence is assumed.
 - Decide how to generate stable, unique `biography_events.reference` and what `reference_date` means when the source only provides a year; also decide a required title policy for entries without subtitle.
-- Correct or explicitly map the three malformed multi-image references before import; source files must not be guessed silently.
+- The three malformed multi-image references are resolved by the explicit, reference-scoped overrides documented below; never apply a global filename heuristic.
+
+### DECISIONS DEFINITIVES D'ARTWORKS
+
+- `lastModificationDate`: EXCLUDED. `date_created` i `date_updated` són camps d'auditoria gestionats per Directus; no recrear timestamps legacy artificialment.
+- `pageName`: EXCLUDED. Gatsby el deriva de `reference`.
+- `url`: EXCLUDED. Gatsby la construeix de forma determinista a partir de `reference` i idioma.
+- `classification.orientation`: EXCLUDED FROM STORAGE / DERIVED IN GATSBY. Es calcula a partir de les dimensions amb la mateixa lògica legacy.
+- `mediterranean-mother.quote-0` i `quote-2`: EXCLUDED. Eren alternatives legacy no llegides, tipades ni renderitzades; es conserva només `quote`.
+- Overrides explícits de `image.otherImages`, verificats contra fitxers físics: `follow-the-sun` → `02.jpg`, `03.jpg`, `04.jpg`, `05.jpg`; `iraia` → `02.jpg`, `03.jpg`, `04.jpg`, `05.jpg`; `vandana-shiva` → `02.jpg`, `03.jpg`. No aplicar heurístiques globals.
 
 ### IMPORTANT
 
@@ -639,6 +648,32 @@ Inventory only. No Directus collection is proposed.
 
 ### MENOR
 
-- Decide whether legacy folder/`pageName`/`url` mismatches are only historical aliases or must be retained before canonicalizing on `reference`.
 - Decide whether legacy underscored fields such as `_subtitle` are discarded or retained manually.
 - Decide whether blog documents are explicitly excluded from this migration; no new Directus collection is proposed here.
+
+### Cobertura final d'artworks
+
+| Camp legacy | Estat | Tractament |
+|---|---|---|
+| reference | IMPLEMENTED | artworks.reference; lookup append-only abans de qualsevol escriptura |
+| order | IMPLEMENTED | artworks.sort |
+| date | IMPLEMENTED | artworks.date a les 12:00 locals, sense offset per timestamp without time zone |
+| hide | IMPLEMENTED | true → archived; absent/false → published |
+| showOnMainScreen | IMPLEMENTED | artworks.show_on_home |
+| title, subtitle, description, body MDX | IMPLEMENTED | traducció ca; body compatible convertit a HTML |
+| seo.description, seo.keywords, seo.image | IMPLEMENTED | traducció ca i asset seo_image |
+| image.main, image.otherImages, image.image_alt_text | IMPLEMENTED | assets deduplicats; junctions ordenades; alt a traducció ca |
+| sizes[].cm.height, width, depth/breadth | IMPLEMENTED | files ordenades d'artwork_dimensions |
+| classification.serie | IMPLEMENTED | primary_serie; resolució exacta |
+| classification.technique, style, surface, composition | IMPLEMENTED | mapping explícit i resolució estricta; sense fuzzy matching |
+| classification.tags, tags | IMPLEMENTED | cap relació perquè no hi ha valors legacy no buits |
+| sellingData.productState, showProductState, priceEur, showPrice | IMPLEMENTED | camps de venda; enum validat contra l'schema |
+| quote.author, quote.text | IMPLEMENTED | autor global + traducció ca; text a traducció ca |
+| classification.orientation | DERIVED | no s'emmagatzema; Gatsby la deriva de totes les dimensions ordenades amb l'algorisme legacy |
+| pageName | DERIVED | Gatsby el deriva de reference |
+| url | DERIVED | Gatsby la construeix de reference i idioma |
+| lastModificationDate | EXCLUDED | no recrear camps d'auditoria gestionats per Directus |
+| mediterranean-mother.quote-0, quote-2 | EXCLUDED | alternatives legacy mai llegides ni renderitzades |
+| antics escalars height_cm, width_cm, depth_cm | EXCLUDED | no formen part del payload; substituïts per artwork_dimensions |
+
+**PENDING: 0.** Les úniques categories de cobertura són IMPLEMENTED, EXCLUDED i DERIVED.
