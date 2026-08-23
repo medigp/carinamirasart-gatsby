@@ -187,3 +187,31 @@ Import the existing Catalan source values into `*_translations` using `languages
 - `press_tags_translations.name`: No direct Gatsby source identified
 - `tags.tag`: No direct Gatsby source identified
 - `tags_translations.name`: No direct Gatsby source identified
+
+## Pages migration checkpoint
+
+| Legacy field | Directus destination | Decision |
+|---|---|---|
+| reference | pages.reference | implemented; exact append-only lookup |
+| hide | pages.status | implemented; true → archived, false/absent → published |
+| title | pages_translations.title (ca) | implemented when present; optional in the current schema |
+| subtitle | pages_translations.subtitle (ca) | implemented when present |
+| MDX body | pages_translations.body (ca) | implemented; compatible Markdown/MDX → HTML |
+| seo.description | pages_translations.seo_description (ca) | implemented |
+| seo.keywords | pages_translations.seo_keywords (ca) | implemented |
+| seo.image | pages.seo_image | implemented with SHA-256 file-map; current schema folder is null, so no folder is invented |
+| pageName | none | derived from reference in Gatsby |
+| url | none | derived from reference and language in Gatsby |
+| lastModificationDate | none | excluded; Directus owns audit timestamps |
+| about.paragraphs[] | future biography_events migration | excluded from pages; do not copy into body |
+| press.paragraphs[] | future press_articles migration | excluded from pages; do not copy into body |
+| reviews and reviews.paragraphs[] | none | EXCLUDED; do not create the page, upload reviews.jpg, import SEO or create placeholders |
+| exhibitions legacy page and paragraphs | none | EXCLUDED; explicitly excluded from legacy migration |
+| sortParagraphs | none in pages | excluded from page payload; it belongs to the separately migrated paragraph lists |
+### Final pages scope
+
+- about: migrable conceptually; existing Directus reference means complete SKIP.
+- press: migrable conceptually; existing Directus reference means complete SKIP.
+- reviews: EXCLUDED completely, including paragraphs, reviews.jpg and SEO.
+- exhibitions: EXCLUDED from the legacy migration.
+- PENDING: 0. Final categories are IMPLEMENTED, DERIVED and EXCLUDED.

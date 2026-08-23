@@ -33,6 +33,11 @@ const seriesSeoImageField = directusSchema.fields.find(
 const seriesDateField = directusSchema.fields.find(
   field => field.collection === "series" && field.field === "date"
 )
+const pageSeoImageField = directusSchema.fields.find(
+  field => field.collection === "pages" && field.field === "seo_image"
+)
+const PAGES_ASSET_FOLDER = pageSeoImageField?.meta?.options?.folder ?? null
+const EXCLUDED_PAGE_REFERENCES = new Set(["exhibitions", "reviews"])
 const artworkSaleStatusField = directusSchema.fields.find(
   field => field.collection === "artworks" && field.field === "sale_status"
 )
@@ -111,15 +116,16 @@ function parseArguments(argv) {
     else throw new Error(`Argument desconegut: ${argument}`)
   }
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
-  if (result.all && result.type !== "artwork") throw new Error("--all només està suportat amb --type artwork")
-  if (result.all && !result.dryRun && !result.confirmBatch) {
+  if (result.all && !["artwork", "pages"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork o pages")
+  if (result.type === "pages" && result.all && !result.dryRun) throw new Error("--type pages --all només està suportat amb --dry-run")
+  if (result.type === "artwork" && result.all && !result.dryRun && !result.confirmBatch) {
     throw new Error("El batch real requereix --confirm-batch")
   }
   if (result.confirmBatch && (!result.all || result.dryRun)) {
     throw new Error("--confirm-batch només és vàlid per --type artwork --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
-  if (!["artwork", "series", "vocabulary"].includes(result.type)) throw new Error("Tipus no suportat")
+  if (!["artwork", "series", "vocabulary", "pages"].includes(result.type)) throw new Error("Tipus no suportat")
   if (result.type === "vocabulary" && !result.collection) throw new Error("Falta --collection <collection>")
   return result
 }
@@ -141,6 +147,29 @@ function listArtworkEntries() {
     }
   }
   return entries.sort((left, right) => left.reference.localeCompare(right.reference))
+}
+function listPageEntries() {
+  const pagesRoot = path.join(projectRoot, "content", "pageTexts")
+  const entries = []
+  for (const pageEntry of fs.readdirSync(pagesRoot, { withFileTypes: true })) {
+    if (!pageEntry.isDirectory()) continue
+    for (const basename of [pageEntry.name + ".mdx", pageEntry.name + ".md", "page.mdx", "page.md"]) {
+      const filename = path.join(pagesRoot, pageEntry.name, basename)
+      if (!fs.existsSync(filename)) continue
+      const parsed = matter(fs.readFileSync(filename, "utf8"))
+      entries.push({ filename, reference: parsed.data.reference || pageEntry.name })
+      break
+    }
+  }
+  return entries.sort((left, right) => left.reference.localeCompare(right.reference))
+}
+
+function findPageFile(reference) {
+  const matches = listPageEntries().filter(entry => entry.reference === reference)
+  if (!matches.length) throw new Error("No s'ha trobat la page legacy: " + reference)
+  if (matches.length > 1) throw new Error("Reference legacy de page duplicada: " + reference)
+  const filename = matches[0].filename
+  return { filename, parsed: matter(fs.readFileSync(filename, "utf8")) }
 }
 function requiredEnvironment() {
   const names = [
@@ -382,7 +411,7 @@ async function uploadFile(filename, folder, cache, fileMap, uploadedFilesThisRun
 
   const content = fs.readFileSync(filename)
   const form = new FormData()
-  form.append("folder", folder)
+  if (folder) form.append("folder", folder)
   const extension = path.extname(filename).toLowerCase()
   const mimeType = extension === ".png" ? "image/png"
     : extension === ".webp" ? "image/webp"
@@ -580,6 +609,160 @@ async function runSeries(options, report, fileMap, fileCache, uploadedFilesThisR
   report.created.push({ type: "series", id: created.data?.id, reference: effectiveReference })
   return report
 }
+function pageTranslationFrom(data, bodyHtml, languageCode) {
+  const translation = { languages_code: languageCode }
+  if (data.title !== undefined) translation.title = data.title
+  if (data.subtitle !== undefined) translation.subtitle = data.subtitle
+  if (bodyHtml !== undefined) translation.body = bodyHtml
+  if (data.seo?.description !== undefined) translation.seo_description = data.seo.description
+  if (data.seo?.keywords !== undefined) translation.seo_keywords = data.seo.keywords
+  return translation
+}
+
+async function runPage(options, report, fileMap, fileCache, uploadedFilesThisRun) {
+  const { filename, parsed } = findPageFile(options.reference)
+  const data = parsed.data
+  const effectiveReference = data.reference || options.reference
+  report.reference = effectiveReference
+
+  if (EXCLUDED_PAGE_REFERENCES.has(effectiveReference)) {
+    throw new Error("Page exclosa explícitament de la migració legacy: " + effectiveReference)
+  }
+
+  const existing = await findExact("pages", "reference", effectiveReference)
+  if (existing) {
+    report.skipped.push({ type: "pages", reference: effectiveReference, reason: "reference already exists", id: existing.id })
+    return report
+  }
+
+  const paragraphs = data.paragraphs
+  if (paragraphs !== undefined && !Array.isArray(paragraphs)) {
+    throw new Error("paragraphs ha de ser un array: " + effectiveReference)
+  }
+  if (paragraphs?.length) {
+    if (effectiveReference === "about" || effectiveReference === "press") {
+      throw new Error("paragraphs[] pertany a una migració posterior, no a pages: " + effectiveReference)
+    }
+    throw new Error("paragraphs[] sense mapping aprovat per pages: " + effectiveReference)
+  }
+
+  const conversion = markdownToHtml(parsed.content)
+  if (conversion.incidents.length) {
+    throw new Error("MDX/JSX no convertible: " + conversion.incidents.join(", "))
+  }
+
+  const catalan = await findExact("languages", "language", "ca", "code,language")
+  if (!catalan?.code) throw new Error("No s'ha pogut resoldre languages.language=ca")
+
+  let seoImageId
+  if (data.seo?.image) {
+    const seoFilename = path.resolve(path.dirname(filename), String(data.seo.image))
+    if (!fs.existsSync(seoFilename)) throw new Error("No existeix seo.image: " + data.seo.image)
+    seoImageId = await uploadFile(
+      seoFilename, PAGES_ASSET_FOLDER, fileCache, fileMap, uploadedFilesThisRun, report
+    )
+  }
+
+  const payload = {
+    reference: effectiveReference,
+    status: data.hide === true ? "archived" : "published",
+    translations: [pageTranslationFrom(data, conversion.html, catalan.code)],
+  }
+  if (seoImageId !== undefined) payload.seo_image = seoImageId
+
+  report.actions.push({
+    action: "create_page_with_translation",
+    endpoint: "/items/pages",
+    payload,
+    source: path.relative(projectRoot, filename).replaceAll("\\", "/"),
+    schemaFolder: PAGES_ASSET_FOLDER,
+  })
+  if (options.dryRun) return report
+
+  const created = await directusRequest("items/pages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  report.created.push({ type: "pages", id: created.data?.id, reference: effectiveReference })
+  return report
+}
+
+function runAllPages(options) {
+  const allEntries = listPageEntries()
+  const excluded = allEntries.filter(entry => EXCLUDED_PAGE_REFERENCES.has(entry.reference))
+  const entries = allEntries.filter(entry => !EXCLUDED_PAGE_REFERENCES.has(entry.reference))
+  const report = {
+    mode: "dry-run",
+    dryRun: true,
+    type: "pages",
+    all: true,
+    excluded: excluded.map(entry => ({ reference: entry.reference, reason: "explicitly excluded" })),
+    created: [],
+    rolledBack: [],
+    skipped: [],
+    warnings: [],
+    errors: [],
+    actions: [],
+    results: [],
+  }
+
+  const grouped = new Map()
+  for (const entry of entries) {
+    const group = grouped.get(entry.reference) || []
+    group.push(entry.filename)
+    grouped.set(entry.reference, group)
+  }
+
+  for (const [reference, filenames] of grouped) {
+    if (filenames.length > 1) {
+      const reason = "Reference legacy de page duplicada: " + reference
+      report.errors.push({ reference, reasons: [reason], files: filenames })
+      report.results.push({ reference, status: "ERROR", warnings: [], errors: [reason] })
+      continue
+    }
+
+    const child = spawnSync(process.execPath, [
+      fileURLToPath(import.meta.url), "--dry-run", "--type", "pages", "--reference", reference,
+    ], {
+      cwd: projectRoot,
+      env: { ...process.env, MIGRATION_JSON_ONLY: "1" },
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+    })
+
+    let item
+    try {
+      item = JSON.parse(child.stdout)
+    } catch {
+      item = {
+        skipped: [], warnings: [],
+        errors: ["No s'ha pogut interpretar el dry-run de la page" + (child.stderr ? ": " + child.stderr.trim() : "")],
+      }
+    }
+    const errors = item.errors || []
+    const warnings = item.warnings || []
+    const skipped = item.skipped || []
+    const status = errors.length ? "ERROR" : skipped.length ? "SKIPPED" : warnings.length ? "WARNING" : "WOULD_CREATE"
+    report.results.push({ reference, file: path.relative(projectRoot, filenames[0]).replaceAll("\\", "/"), status, warnings, errors })
+    report.skipped.push(...skipped)
+    if (warnings.length) report.warnings.push({ reference, reasons: warnings })
+    if (errors.length) report.errors.push({ reference, file: path.relative(projectRoot, filenames[0]).replaceAll("\\", "/"), reasons: errors })
+  }
+
+  report.summary = {
+    TOTAL: entries.length,
+    EXCLUDED: excluded.length,
+    WOULD_CREATE: report.results.filter(result => result.status === "WOULD_CREATE").length,
+    SKIPPED_ARTWORKS: report.results.filter(result => result.status === "SKIPPED").length,
+    WARNINGS: report.results.filter(result => result.status === "WARNING").length,
+    ERRORS: report.results.filter(result => result.status === "ERROR").length,
+  }
+  report.skippedReferences = report.results.filter(result => result.status === "SKIPPED").map(result => result.reference)
+  report.warningReferences = report.results.filter(result => result.status === "WARNING").map(result => ({ reference: result.reference, reasons: result.warnings }))
+  report.errorReferences = report.results.filter(result => result.status === "ERROR").map(result => ({ reference: result.reference, reasons: result.errors }))
+  return report
+}
 function runAllArtworks(options) {
   const entries = listArtworkEntries()
   const references = new Map()
@@ -689,7 +872,7 @@ function runAllArtworks(options) {
 async function run() {
   const options = parseArguments(process.argv.slice(2))
   requiredEnvironment()
-  if (options.all) return runAllArtworks(options)
+  if (options.all) return options.type === "pages" ? runAllPages(options) : runAllArtworks(options)
   const report = { mode: options.dryRun ? "dry-run" : "write", dryRun: options.dryRun, type: options.type, reference: options.reference, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [] }
   const uploadedFilesThisRun = []
   const fileMap = loadFileMap()
@@ -700,6 +883,9 @@ async function run() {
     }
     if (options.type === "series") {
       return await runSeries(options, report, fileMap, fileCache, uploadedFilesThisRun)
+    }
+    if (options.type === "pages") {
+      return await runPage(options, report, fileMap, fileCache, uploadedFilesThisRun)
     }
     const { filename, parsed } = findArtworkFile(options.reference)
     const data = parsed.data
@@ -817,10 +1003,11 @@ if (process.env.MIGRATION_JSON_ONLY === "1") {
 } else {
   console.log(JSON.stringify(report, null, 2))
   if (report.summary) {
-    console.log("TOTAL: " + report.summary.TOTAL)
+    console.log((report.type === "pages" ? "TOTAL MIGRABLE: " : "TOTAL: ") + report.summary.TOTAL)
+    if (report.type === "pages") console.log("EXCLUDED: " + report.summary.EXCLUDED)
     if (report.dryRun) console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
     else console.log("CREATED ARTWORKS: " + report.summary.CREATED_ARTWORKS)
-    console.log("SKIPPED ARTWORKS: " + report.summary.SKIPPED_ARTWORKS)
+    console.log((report.type === "artwork" ? "SKIPPED ARTWORKS: " : "SKIPPED: ") + report.summary.SKIPPED_ARTWORKS)
     console.log("WARNINGS: " + report.summary.WARNINGS)
     console.log("ERRORS: " + report.summary.ERRORS)
     if (!report.dryRun) {
