@@ -704,3 +704,20 @@ Inventory only. No Directus collection is proposed.
 | sortParagraphs | EXCLUDED FROM PAGES | belongs to separately migrated lists |
 
 **PENDING: 0.**
+## Press checkpoint (2026-08-24)
+
+- Legacy paragraphs: 30; valid URLs: 30; missing text: 9; article images: 0; additional fields: 0.
+- Date formats: 18 zero-padded `YYYY-MM-DD`, 12 non-padded `YYYY-M-D`; all normalize unambiguously.
+- Duplicate normalized dates: `2024-08-05` (indexes 13, 14) and `2025-08-04` (indexes 18, 19).
+- Directus `media` is a required nullable `varchar`, without enum or relation. Approved semantic mapping: legacy `author` → both `media` and `author`.
+- Canonical URL: item-level `press_articles.external_url`; omit translation URL for new records.
+- Exact existing overrides: 0→`beopen`, 1→`marato-2021`, 2→`vallenc-20230110`, 3→`vallenc-20230410`, 4→`vallenc-20230414`, 29→`obertament-ressonancies`.
+- Directus-only `segre-20260724` is not imported or modified.
+- New legacy articles: `status = published`. Existing references: complete append-only SKIP, preserving Directus status and dates.
+- Accepted difference: `beopen` was visible in legacy but is `draft` in Directus. Directus is authoritative; no update, warning or error, and it remains non-public while draft.
+- `sort = legacy index + 1`; Gatsby uses `reference_date-sort-##########` with stable ID fallback, preserving deterministic reverse legacy order under `DESC` for same-day articles.
+- New references: deterministic `YYYYMMDD`, then `-02`, `-03` by ascending legacy index. A collision is SKIP only after unequivocal URL plus title or author/media validation; otherwise ERROR.
+- New dates: `YYYY-MM-DDT12:00:00`, without offset for PostgreSQL `timestamp without time zone`.
+- Only Catalan translation; absent description is valid and omitted. No article images, tags, series or exhibitions are inferred.
+- Press dry-run is implemented for individual references and `--all`; write mode is intentionally blocked.
+- PENDING: 0.

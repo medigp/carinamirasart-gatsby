@@ -290,6 +290,7 @@ exports.sourceDirectusNodes = async helpers => {
         paragraphs = pressArticles.map(article => {
           const text = selectTranslation(article.translations, lang)
           const date = String(article.reference_date || "").slice(0, 10)
+          const chronologySort = String(article.sort ?? article.id).padStart(10, "0")
           return {
             date,
             title: text.title || article.reference,
@@ -297,7 +298,7 @@ exports.sourceDirectusNodes = async helpers => {
             text: text.description,
             author: article.author,
             link: text.external_url || article.external_url,
-            sortText: date,
+            sortText: `${date}-sort-${chronologySort}`,
           }
         })
       } else if (item.reference === "about") {

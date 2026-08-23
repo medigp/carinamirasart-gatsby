@@ -42,6 +42,9 @@ const biographyImageField = directusSchema.fields.find(
 const biographyReferenceDateField = directusSchema.fields.find(
   field => field.collection === "biography_events" && field.field === "reference_date"
 )
+const pressReferenceDateField = directusSchema.fields.find(
+  field => field.collection === "press_articles" && field.field === "reference_date"
+)
 const PAGES_ASSET_FOLDER = pageSeoImageField?.meta?.options?.folder ?? null
 const BIOGRAPHY_ASSET_FOLDER = biographyImageField?.meta?.options?.folder ?? null
 const EXCLUDED_PAGE_REFERENCES = new Set(["exhibitions", "reviews"])
@@ -70,6 +73,9 @@ if (seriesDateField?.schema?.data_type !== "timestamp without time zone") {
 if (biographyReferenceDateField?.schema?.data_type !== "timestamp without time zone") {
   throw new Error("biography_events.reference_date ja no és timestamp without time zone; cal revisar la conversió")
 }
+if (pressReferenceDateField?.schema?.data_type !== "timestamp without time zone") {
+  throw new Error("press_articles.reference_date ja no és timestamp without time zone; cal revisar la conversió")
+}
 
 const BIOGRAPHY_EXISTING_REFERENCE_OVERRIDES = Object.freeze({
   0: "1986-born",
@@ -85,6 +91,11 @@ const BIOGRAPHY_EXISTING_REFERENCE_OVERRIDES = Object.freeze({
   10: "2015-teaching",
   11: "2015-nepal",
   12: "2019-artista-visual",
+})
+
+const PRESS_EXISTING_REFERENCE_OVERRIDES = Object.freeze({
+  0: "beopen", 1: "marato-2021", 2: "vallenc-20230110",
+  3: "vallenc-20230410", 4: "vallenc-20230414", 29: "obertament-ressonancies",
 })
 
 const VOCABULARY_MAP = {
@@ -142,8 +153,9 @@ function parseArguments(argv) {
     else throw new Error(`Argument desconegut: ${argument}`)
   }
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
-  if (result.all && !["artwork", "pages", "biography"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork, pages o biography")
+  if (result.all && !["artwork", "pages", "biography", "press"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork, pages, biography o press")
   if (result.type === "pages" && result.all && !result.dryRun) throw new Error("--type pages --all només està suportat amb --dry-run")
+  if (result.type === "press" && !result.dryRun) throw new Error("L'escriptura real de press encara no està habilitada; utilitza --dry-run")
   if (["artwork", "biography"].includes(result.type) && result.all && !result.dryRun && !result.confirmBatch) {
     throw new Error("El batch real requereix --confirm-batch")
   }
@@ -151,7 +163,7 @@ function parseArguments(argv) {
     throw new Error("--confirm-batch només és vàlid per --type artwork o biography --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
-  if (!["artwork", "series", "vocabulary", "pages", "biography"].includes(result.type)) throw new Error("Tipus no suportat")
+  if (!["artwork", "series", "vocabulary", "pages", "biography", "press"].includes(result.type)) throw new Error("Tipus no suportat")
   if (result.type === "vocabulary" && !result.collection) throw new Error("Falta --collection <collection>")
   return result
 }
@@ -222,6 +234,35 @@ function findBiographyEntry(reference) {
   const matches = listBiographyEntries().filter(entry => entry.reference === reference)
   if (!matches.length) throw new Error(`No s'ha trobat l'event biogràfic legacy: ${reference}`)
   if (matches.length > 1) throw new Error(`Reference biogràfica duplicada: ${reference}`)
+  return matches[0]
+}
+
+function normalizeLegacyDate(value, label) {
+  const match = String(value || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (!match) throw new Error(`${label} no és una data YYYY-M-D vàlida: ${value}`)
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3])
+  const candidate = new Date(Date.UTC(year, month - 1, day))
+  if (candidate.getUTCFullYear() !== year || candidate.getUTCMonth() !== month - 1 || candidate.getUTCDate() !== day) throw new Error(`${label} no és una data de calendari vàlida: ${value}`)
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+function listPressEntries() {
+  const filename = path.join(projectRoot, "content", "pageTexts", "press", "press.mdx")
+  if (!fs.existsSync(filename)) throw new Error("No existeix content/pageTexts/press/press.mdx")
+  const parsed = matter(fs.readFileSync(filename, "utf8"))
+  if (!Array.isArray(parsed.data.paragraphs)) throw new Error("press.paragraphs no és un array")
+  const generatedCollisions = new Map()
+  return parsed.data.paragraphs.map((paragraph, index) => {
+    const normalizedDate = normalizeLegacyDate(paragraph?.date, `press.paragraphs[${index}].date`)
+    let reference = PRESS_EXISTING_REFERENCE_OVERRIDES[index]
+    if (!reference) { const base = normalizedDate.replaceAll("-", ""), occurrence = (generatedCollisions.get(base) || 0) + 1; generatedCollisions.set(base, occurrence); reference = occurrence === 1 ? base : `${base}-${String(occurrence).padStart(2, "0")}` }
+    return { filename, index, paragraph, reference, normalizedDate, referenceDate: `${normalizedDate}T12:00:00`, existingOverride: Boolean(PRESS_EXISTING_REFERENCE_OVERRIDES[index]) }
+  })
+}
+function findPressEntry(reference) {
+  const matches = listPressEntries().filter(entry => entry.reference === reference)
+  if (!matches.length) throw new Error(`No s'ha trobat l'article de premsa legacy: ${reference}`)
+  if (matches.length > 1) throw new Error(`Reference de premsa duplicada: ${reference}`)
   return matches[0]
 }
 
@@ -742,6 +783,54 @@ async function runPage(options, report, fileMap, fileCache, uploadedFilesThisRun
   return report
 }
 
+function pressTranslation(paragraph, languageCode, descriptionHtml) {
+  const translation = { languages_code: languageCode, title: paragraph.title }
+  if (descriptionHtml !== undefined) translation.description = descriptionHtml
+  return translation
+}
+async function runPress(options, report) {
+  const entry = findPressEntry(options.reference)
+  const { filename, index, paragraph, reference, referenceDate, existingOverride } = entry
+  report.reference = reference
+  if (typeof paragraph.title !== "string" || !paragraph.title.trim()) throw new Error(`press.paragraphs[${index}].title és obligatori`)
+  if (typeof paragraph.author !== "string" || !paragraph.author.trim()) throw new Error(`press.paragraphs[${index}].author és obligatori`)
+  if (typeof paragraph.link !== "string" || !paragraph.link.trim()) throw new Error(`press.paragraphs[${index}].link és obligatori`)
+  try { new URL(paragraph.link) } catch { throw new Error(`press.paragraphs[${index}].link no és una URL vàlida: ${paragraph.link}`) }
+  const catalan = await findExact("languages", "language", "ca", "code,language")
+  if (!catalan?.code) throw new Error("No s'ha pogut resoldre languages.language=ca")
+  const existing = await findExact("press_articles", "reference", reference, "id,reference,status,media,author,external_url,translations.languages_code,translations.title,translations.external_url")
+  if (existing) {
+    const translation = (existing.translations || []).find(item => item.languages_code === catalan.code)
+    const urlMatches = (existing.external_url || translation?.external_url) === paragraph.link
+    const titleMatches = translation?.title === paragraph.title
+    const authorMediaMatches = existing.author === paragraph.author || existing.media === paragraph.author
+    if (!urlMatches || (!titleMatches && !authorMediaMatches)) throw new Error(`La reference existent ${reference} no correspon inequívocament a press.paragraphs[${index}]`)
+    report.actions.push({ action: existingOverride ? "validate_existing_press_override" : "validate_existing_generated_press_reference", reference, legacyIndex: index, id: existing.id, comparison: { urlMatches, titleMatches, authorMediaMatches }, authoritativeStatus: existing.status })
+    report.skipped.push({ type: "press", reference, reason: "reference already exists and matches legacy article", id: existing.id })
+    return report
+  }
+  if (existingOverride) throw new Error(`L'override press.paragraphs[${index}] → ${reference} ja no existeix a Directus`)
+  const conversion = markdownToHtml(paragraph.text)
+  if (conversion.incidents.length) throw new Error(`MDX/JSX no convertible a press.paragraphs[${index}].text: ${conversion.incidents.join(", ")}`)
+  const payload = { reference, reference_date: referenceDate, sort: index + 1, status: "published", media: paragraph.author, author: paragraph.author, external_url: paragraph.link, translations: [pressTranslation(paragraph, catalan.code, conversion.html)] }
+  report.actions.push({ action: "would_create_press_with_translation", endpoint: "/items/press_articles", payload, source: path.relative(projectRoot, filename).replaceAll("\\", "/"), legacyIndex: index, sortText: `${entry.normalizedDate}-sort-${String(index + 1).padStart(10, "0")}` })
+  return report
+}
+function runAllPress() {
+  const entries = listPressEntries(), report = { mode: "dry-run", dryRun: true, type: "press", all: true, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [] }
+  for (const entry of entries) {
+    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--dry-run", "--type", "press", "--reference", entry.reference], { cwd: projectRoot, env: { ...process.env, MIGRATION_JSON_ONLY: "1" }, encoding: "utf8", maxBuffer: 20 * 1024 * 1024 })
+    let item; try { item = JSON.parse(child.stdout) } catch { item = { skipped: [], warnings: [], actions: [], errors: ["No s'ha pogut interpretar el resultat de press" + (child.stderr ? ": " + child.stderr.trim() : "")] } }
+    const skipped = item.skipped || [], warnings = item.warnings || [], errors = item.errors || [], actions = item.actions || []
+    const status = errors.length ? "ERROR" : skipped.length ? "SKIPPED" : warnings.length ? "WARNING" : "WOULD_CREATE"
+    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings, errors }); report.skipped.push(...skipped); report.actions.push(...actions)
+    if (warnings.length) report.warnings.push({ reference: entry.reference, reasons: warnings }); if (errors.length) report.errors.push({ reference: entry.reference, reasons: errors })
+  }
+  report.summary = { TOTAL: entries.length, WOULD_CREATE: report.results.filter(item => item.status === "WOULD_CREATE").length, SKIPPED: report.results.filter(item => item.status === "SKIPPED").length, WARNINGS: report.results.filter(item => item.status === "WARNING").length, ERRORS: report.results.filter(item => item.status === "ERROR").length }
+  report.wouldCreateReferences = report.results.filter(item => item.status === "WOULD_CREATE").map(item => item.reference); report.skippedReferences = report.results.filter(item => item.status === "SKIPPED").map(item => item.reference); report.errorReferences = report.results.filter(item => item.status === "ERROR").map(item => ({ reference: item.reference, reasons: item.errors }))
+  return report
+}
+
 function biographyTranslation(paragraph, yearLabel, languageCode, descriptionHtml) {
   const translation = {
     languages_code: languageCode,
@@ -1100,6 +1189,7 @@ async function run() {
   if (options.all) {
     if (options.type === "pages") return runAllPages(options)
     if (options.type === "biography") return runAllBiography(options)
+    if (options.type === "press") return runAllPress(options)
     return runAllArtworks(options)
   }
   const report = { mode: options.dryRun ? "dry-run" : "write", dryRun: options.dryRun, type: options.type, reference: options.reference, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [] }
@@ -1119,6 +1209,7 @@ async function run() {
     if (options.type === "biography") {
       return await runBiography(options, report, fileMap, fileCache, uploadedFilesThisRun)
     }
+    if (options.type === "press") return await runPress(options, report)
     const { filename, parsed } = findArtworkFile(options.reference)
     const data = parsed.data
     const effectiveReference = data.reference || options.reference

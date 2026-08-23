@@ -54,7 +54,11 @@ const Press = ({data}) => {
                   const ascFactor = (sortParagraphs === 'ASC' ? 1 : -1);
                   var d1 = getDate(p1.date);
                   var d2 = getDate(p2.date);
-                  return (d1 < d2 ? -1 : 1) * ascFactor;
+                  if (d1.getTime() !== d2.getTime())
+                    return (d1 < d2 ? -1 : 1) * ascFactor;
+                  const sort1 = p1.sortText || p1.date || "";
+                  const sort2 = p2.sortText || p2.date || "";
+                  return sort1.localeCompare(sort2) * ascFactor;
                 }).map((paragraph, index) => 
                   {return getParagraph(paragraph, index)}
                 )
@@ -207,7 +211,8 @@ query {
       title,
       text,
       author,
-      link
+      link,
+      sortText
     }
 
   }

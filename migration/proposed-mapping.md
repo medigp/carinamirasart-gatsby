@@ -82,9 +82,10 @@ Import the existing Catalan source values into `*_translations` using `languages
 | biography_events | about.paragraphs[].image | biography_events.image/images | probable | ignore empty strings; upload files |
 | press_articles | press.paragraphs[].date | press_articles.reference_date | safe | zero-pad legacy dates and normalize dateTime to 12:00 Europe/Madrid, respecting CET/CEST |
 | press_articles | press.paragraphs[].title/text | press_articles_translations.title/description | safe | create only languages_code=ca and preserve source text verbatim |
-| press_articles | press.paragraphs[].author/link | press_articles.author/external_url | safe | rename link |
+| press_articles | press.paragraphs[].author | press_articles.media + press_articles.author | safe | all 30 values are outlet labels; existing matched records use the same value in both fields |
+| press_articles | press.paragraphs[].link | press_articles.external_url | safe | canonical non-translated URL; omit translations.external_url for new records |
 | press_articles | complete reference_date | press_articles.reference | safe | generate deterministic YYYYMMDD; append -02, -03, ... for same-collection collisions in stable source order |
-| press_articles | no explicit source | press_articles.media | manual | required field has no approved legacy mapping; do not infer it from author or domain |
+| press_articles | press.paragraphs[].author | press_articles.media | safe | explicit deterministic copy; schema media is a required nullable string, not a relation or enum |
 | exhibitions | content/pageTexts/exhibitions/** and exhibition-like prose | none during migration | excluded | do not import placeholder data; future exhibition content will be authored directly in Directus |
 | blog | content/blog/** | none | excluded | exclude completely; do not create a collection or import any blog data |
 
@@ -120,7 +121,8 @@ Import the existing Catalan source values into `*_translations` using `languages
 - reference_date → biography_events.reference
 - press.paragraphs[].date → press_articles.reference_date
 - press.paragraphs[].title/text → press_articles_translations.title/description
-- press.paragraphs[].author/link → press_articles.author/external_url
+- press.paragraphs[].author → press_articles.media and press_articles.author
+- press.paragraphs[].link → press_articles.external_url
 - complete reference_date → press_articles.reference
 
 ## Manual decisions required
@@ -128,7 +130,6 @@ Import the existing Catalan source values into `*_translations` using `languages
 - **Existing biography references** — use the approved explicit overrides for legacy indexes 0–12 (`1986-born` through `2019-artista-visual`) so append-only lookup skips the 13 corrected events. New events use deterministic date-based references; never fuzzy-match at runtime.
 - **Biography order** — persist legacy index + 1 in `biography_events.sort`; Gatsby must use `reference_date` plus `sort` deterministically so equal-year entries retain legacy order under `DESC`.
 
-- **press_articles: no explicit source → press_articles.media** — required field has no approved legacy mapping; do not infer it from author or domain
 
 ## Explicitly excluded
 
@@ -219,3 +220,23 @@ Import the existing Catalan source values into `*_translations` using `languages
 - reviews: EXCLUDED completely, including paragraphs, reviews.jpg and SEO.
 - exhibitions: EXCLUDED from the legacy migration.
 - PENDING: 0. Final categories are IMPLEMENTED, DERIVED and EXCLUDED.
+## Press migration checkpoint (2026-08-24)
+
+Demonstrated decisions:
+
+- `paragraphs[].title` → Catalan `press_articles_translations.title`.
+- `paragraphs[].text` → Catalan `press_articles_translations.description`; omit when absent, preserving legacy HTML.
+- `paragraphs[].author` → both `press_articles.media` and `press_articles.author`. All 30 values identify the publishing outlet, and matched existing records follow this model.
+- `paragraphs[].link` → canonical `press_articles.external_url`; do not duplicate it into translations for new records because the URL is not language-specific and `sourceNodes.js` already falls back from translation URL to the item URL.
+- No paragraph has an article image. Do not use page-level `press.jpg`/`press2.jpg` as article assets.
+- Omit tags, series, exhibitions, images and other new relations without explicit legacy origin.
+- Explicit existing-reference overrides, based on exact URL correspondence: indexes 0→`beopen`, 1→`marato-2021`, 2→`vallenc-20230110`, 3→`vallenc-20230410`, 4→`vallenc-20230414`, 29→`obertament-ressonancies`. `segre-20260724` has no legacy paragraph and remains untouched.
+
+Definitive press policy:
+
+- New legacy articles use `status = published`; existing references are complete append-only SKIPs and retain their Directus status.
+- `beopen` is deliberately accepted as a legacy-visible / Directus-`draft` difference. Directus is authoritative: it remains unchanged and will not be public while it remains draft.
+- `press_articles.sort = legacy index + 1`. Gatsby combines `reference_date` and padded sort (stable ID fallback) so duplicate dates sort deterministically under `DESC`.
+- New references are deterministic `YYYYMMDD`, then `-02`, `-03` in ascending legacy-index order. Existing collisions must match URL and title or author/media unequivocally; otherwise migration is blocked.
+- New `reference_date` values are normalized to local noon as `YYYY-MM-DDT12:00:00` without offset because the destination is PostgreSQL `timestamp without time zone`.
+- Press write mode remains disabled at this checkpoint; individual and global dry-runs are implemented and validated.
