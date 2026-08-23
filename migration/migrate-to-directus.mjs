@@ -99,19 +99,24 @@ const OTHER_IMAGE_OVERRIDES = Object.freeze({
 })
 
 function parseArguments(argv) {
-  const result = { dryRun: false, all: false, reference: null, type: "artwork", collection: null }
+  const result = { dryRun: false, all: false, confirmBatch: false, reference: null, type: "artwork", collection: null }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === "--dry-run") result.dryRun = true
     else if (argument === "--all") result.all = true
+    else if (argument === "--confirm-batch") result.confirmBatch = true
     else if (argument === "--reference") result.reference = argv[++index]
     else if (argument === "--type") result.type = argv[++index]
     else if (argument === "--collection") result.collection = argv[++index]
     else throw new Error(`Argument desconegut: ${argument}`)
   }
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
-  if (result.all && (!result.dryRun || result.type !== "artwork")) {
-    throw new Error("--all només està suportat amb --dry-run --type artwork")
+  if (result.all && result.type !== "artwork") throw new Error("--all només està suportat amb --type artwork")
+  if (result.all && !result.dryRun && !result.confirmBatch) {
+    throw new Error("El batch real requereix --confirm-batch")
+  }
+  if (result.confirmBatch && (!result.all || result.dryRun)) {
+    throw new Error("--confirm-batch només és vàlid per --type artwork --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
   if (!["artwork", "series", "vocabulary"].includes(result.type)) throw new Error("Tipus no suportat")
@@ -575,7 +580,7 @@ async function runSeries(options, report, fileMap, fileCache, uploadedFilesThisR
   report.created.push({ type: "series", id: created.data?.id, reference: effectiveReference })
   return report
 }
-function runAllArtworks() {
+function runAllArtworks(options) {
   const entries = listArtworkEntries()
   const references = new Map()
   for (const entry of entries) {
@@ -585,8 +590,17 @@ function runAllArtworks() {
   }
 
   const report = {
-    mode: "dry-run", dryRun: true, type: "artwork", all: true,
-    created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [],
+    mode: options.dryRun ? "dry-run" : "write",
+    dryRun: options.dryRun,
+    type: "artwork",
+    all: true,
+    created: [],
+    rolledBack: [],
+    skipped: [],
+    warnings: [],
+    errors: [],
+    actions: [],
+    results: [],
   }
 
   for (const [reference, filenames] of references) {
@@ -597,13 +611,18 @@ function runAllArtworks() {
       continue
     }
 
-    const child = spawnSync(process.execPath, [
-      fileURLToPath(import.meta.url), "--dry-run", "--type", "artwork", "--reference", reference,
-    ], {
+    // Each artwork runs in an isolated process. Its uploadedFilesThisRun, cache and
+    // rollback scope cannot contain uploads confirmed by a previous artwork.
+    // The persistent SHA-256 file-map remains shared on disk between executions.
+    const childArguments = [
+      fileURLToPath(import.meta.url), "--type", "artwork", "--reference", reference,
+    ]
+    if (options.dryRun) childArguments.splice(1, 0, "--dry-run")
+    const child = spawnSync(process.execPath, childArguments, {
       cwd: projectRoot,
       env: { ...process.env, MIGRATION_JSON_ONLY: "1" },
       encoding: "utf8",
-      maxBuffer: 10 * 1024 * 1024,
+      maxBuffer: 20 * 1024 * 1024,
     })
 
     let item
@@ -611,27 +630,57 @@ function runAllArtworks() {
       item = JSON.parse(child.stdout)
     } catch {
       item = {
-        skipped: [], warnings: [],
-        errors: ["No s'ha pogut interpretar el resultat del dry-run" + (child.stderr ? ": " + child.stderr.trim() : "")],
+        created: [], rolledBack: [], skipped: [], warnings: [], actions: [],
+        errors: ["No s'ha pogut interpretar el resultat de l'artwork" + (child.stderr ? ": " + child.stderr.trim() : "")],
       }
     }
+
+    const created = item.created || []
+    const rolledBack = item.rolledBack || []
     const errors = item.errors || []
     const warnings = item.warnings || []
     const skipped = item.skipped || []
-    const status = errors.length ? "ERROR" : skipped.length ? "SKIPPED" : warnings.length ? "WARNING" : "WOULD_CREATE"
-    report.results.push({ reference, status, warnings, errors })
-    if (skipped.length) report.skipped.push(...skipped)
+    const actions = item.actions || []
+    const artworkCreated = created.some(entry => entry.type === "artwork")
+    const status = errors.length
+      ? "ERROR"
+      : skipped.length
+        ? "SKIPPED"
+        : warnings.length
+          ? "WARNING"
+          : options.dryRun
+            ? "WOULD_CREATE"
+            : artworkCreated
+              ? "CREATED"
+              : "ERROR"
+    const normalizedErrors = status === "ERROR" && !errors.length
+      ? ["L'execució no ha creat ni omès l'artwork"]
+      : errors
+
+    report.results.push({ reference, status, warnings, errors: normalizedErrors })
+    report.created.push(...created)
+    report.rolledBack.push(...rolledBack)
+    report.skipped.push(...skipped)
+    report.actions.push(...actions)
     if (warnings.length) report.warnings.push({ reference, reasons: warnings })
-    if (errors.length) report.errors.push({ reference, reasons: errors })
+    if (normalizedErrors.length) report.errors.push({ reference, reasons: normalizedErrors })
   }
 
+  const createdArtworkReferences = report.created
+    .filter(entry => entry.type === "artwork")
+    .map(entry => entry.reference)
   report.summary = {
     TOTAL: entries.length,
     WOULD_CREATE: report.results.filter(result => result.status === "WOULD_CREATE").length,
-    SKIPPED: report.results.filter(result => result.status === "SKIPPED").length,
+    CREATED_ARTWORKS: createdArtworkReferences.length,
+    SKIPPED_ARTWORKS: report.results.filter(result => result.status === "SKIPPED").length,
     WARNINGS: report.results.filter(result => result.status === "WARNING").length,
     ERRORS: report.results.filter(result => result.status === "ERROR").length,
+    FILES_UPLOADED: report.created.filter(entry => entry.type === "file").length,
+    FILES_REUSED: report.actions.filter(action => String(action.disposition || "").startsWith("REUSE")).length,
+    FILES_ROLLED_BACK: report.rolledBack.filter(entry => entry.type === "file").length,
   }
+  report.createdReferences = createdArtworkReferences
   report.skippedReferences = report.results.filter(result => result.status === "SKIPPED").map(result => result.reference)
   report.warningReferences = report.results.filter(result => result.status === "WARNING").map(result => ({ reference: result.reference, reasons: result.warnings }))
   report.errorReferences = report.results.filter(result => result.status === "ERROR").map(result => ({ reference: result.reference, reasons: result.errors }))
@@ -640,7 +689,7 @@ function runAllArtworks() {
 async function run() {
   const options = parseArguments(process.argv.slice(2))
   requiredEnvironment()
-  if (options.all) return runAllArtworks()
+  if (options.all) return runAllArtworks(options)
   const report = { mode: options.dryRun ? "dry-run" : "write", dryRun: options.dryRun, type: options.type, reference: options.reference, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [] }
   const uploadedFilesThisRun = []
   const fileMap = loadFileMap()
@@ -769,10 +818,16 @@ if (process.env.MIGRATION_JSON_ONLY === "1") {
   console.log(JSON.stringify(report, null, 2))
   if (report.summary) {
     console.log("TOTAL: " + report.summary.TOTAL)
-    console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
-    console.log("SKIPPED: " + report.summary.SKIPPED)
+    if (report.dryRun) console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
+    else console.log("CREATED ARTWORKS: " + report.summary.CREATED_ARTWORKS)
+    console.log("SKIPPED ARTWORKS: " + report.summary.SKIPPED_ARTWORKS)
     console.log("WARNINGS: " + report.summary.WARNINGS)
     console.log("ERRORS: " + report.summary.ERRORS)
+    if (!report.dryRun) {
+      console.log("FILES UPLOADED: " + report.summary.FILES_UPLOADED)
+      console.log("FILES REUSED: " + report.summary.FILES_REUSED)
+      console.log("FILES ROLLED BACK: " + report.summary.FILES_ROLLED_BACK)
+    }
   } else {
     console.log("CREATED: " + report.created.length)
     console.log("SKIPPED: " + report.skipped.length)
