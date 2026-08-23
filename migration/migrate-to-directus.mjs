@@ -155,12 +155,11 @@ function parseArguments(argv) {
   if (result.all && result.reference) throw new Error("--all i --reference són incompatibles")
   if (result.all && !["artwork", "pages", "biography", "press"].includes(result.type)) throw new Error("--all només està suportat amb --type artwork, pages, biography o press")
   if (result.type === "pages" && result.all && !result.dryRun) throw new Error("--type pages --all només està suportat amb --dry-run")
-  if (result.type === "press" && !result.dryRun) throw new Error("L'escriptura real de press encara no està habilitada; utilitza --dry-run")
-  if (["artwork", "biography"].includes(result.type) && result.all && !result.dryRun && !result.confirmBatch) {
+  if (["artwork", "biography", "press"].includes(result.type) && result.all && !result.dryRun && !result.confirmBatch) {
     throw new Error("El batch real requereix --confirm-batch")
   }
-  if (result.confirmBatch && (!result.all || result.dryRun || !["artwork", "biography"].includes(result.type))) {
-    throw new Error("--confirm-batch només és vàlid per --type artwork o biography --all sense --dry-run")
+  if (result.confirmBatch && (!result.all || result.dryRun || !["artwork", "biography", "press"].includes(result.type))) {
+    throw new Error("--confirm-batch només és vàlid per --type artwork, biography o press --all sense --dry-run")
   }
   if (!result.all && !result.reference) throw new Error("Falta --reference <reference>")
   if (!["artwork", "series", "vocabulary", "pages", "biography", "press"].includes(result.type)) throw new Error("Tipus no suportat")
@@ -813,21 +812,85 @@ async function runPress(options, report) {
   const conversion = markdownToHtml(paragraph.text)
   if (conversion.incidents.length) throw new Error(`MDX/JSX no convertible a press.paragraphs[${index}].text: ${conversion.incidents.join(", ")}`)
   const payload = { reference, reference_date: referenceDate, sort: index + 1, status: "published", media: paragraph.author, author: paragraph.author, external_url: paragraph.link, translations: [pressTranslation(paragraph, catalan.code, conversion.html)] }
-  report.actions.push({ action: "would_create_press_with_translation", endpoint: "/items/press_articles", payload, source: path.relative(projectRoot, filename).replaceAll("\\", "/"), legacyIndex: index, sortText: `${entry.normalizedDate}-sort-${String(index + 1).padStart(10, "0")}` })
+  report.actions.push({ action: options.dryRun ? "would_create_press_with_translation" : "create_press_with_translation", endpoint: "/items/press_articles", payload, source: path.relative(projectRoot, filename).replaceAll("\\", "/"), legacyIndex: index, sortText: `${entry.normalizedDate}-sort-${String(index + 1).padStart(10, "0")}` })
+  if (options.dryRun) return report
+  const created = await directusRequest("items/press_articles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+  report.created.push({ type: "press", id: created.data?.id, reference })
   return report
 }
-function runAllPress() {
-  const entries = listPressEntries(), report = { mode: "dry-run", dryRun: true, type: "press", all: true, created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [] }
-  for (const entry of entries) {
-    const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--dry-run", "--type", "press", "--reference", entry.reference], { cwd: projectRoot, env: { ...process.env, MIGRATION_JSON_ONLY: "1" }, encoding: "utf8", maxBuffer: 20 * 1024 * 1024 })
-    let item; try { item = JSON.parse(child.stdout) } catch { item = { skipped: [], warnings: [], actions: [], errors: ["No s'ha pogut interpretar el resultat de press" + (child.stderr ? ": " + child.stderr.trim() : "")] } }
-    const skipped = item.skipped || [], warnings = item.warnings || [], errors = item.errors || [], actions = item.actions || []
-    const status = errors.length ? "ERROR" : skipped.length ? "SKIPPED" : warnings.length ? "WARNING" : "WOULD_CREATE"
-    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings, errors }); report.skipped.push(...skipped); report.actions.push(...actions)
-    if (warnings.length) report.warnings.push({ reference: entry.reference, reasons: warnings }); if (errors.length) report.errors.push({ reference: entry.reference, reasons: errors })
+function runAllPress(options) {
+  const entries = listPressEntries()
+  const report = {
+    mode: options.dryRun ? "dry-run" : "write",
+    dryRun: options.dryRun,
+    type: "press",
+    all: true,
+    created: [], rolledBack: [], skipped: [], warnings: [], errors: [], actions: [], results: [],
   }
-  report.summary = { TOTAL: entries.length, WOULD_CREATE: report.results.filter(item => item.status === "WOULD_CREATE").length, SKIPPED: report.results.filter(item => item.status === "SKIPPED").length, WARNINGS: report.results.filter(item => item.status === "WARNING").length, ERRORS: report.results.filter(item => item.status === "ERROR").length }
-  report.wouldCreateReferences = report.results.filter(item => item.status === "WOULD_CREATE").map(item => item.reference); report.skippedReferences = report.results.filter(item => item.status === "SKIPPED").map(item => item.reference); report.errorReferences = report.results.filter(item => item.status === "ERROR").map(item => ({ reference: item.reference, reasons: item.errors }))
+  for (const entry of entries) {
+    const childArguments = [fileURLToPath(import.meta.url), "--type", "press", "--reference", entry.reference]
+    if (options.dryRun) childArguments.splice(1, 0, "--dry-run")
+    const child = spawnSync(process.execPath, childArguments, {
+      cwd: projectRoot,
+      env: { ...process.env, MIGRATION_JSON_ONLY: "1" },
+      encoding: "utf8",
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    let item
+    try {
+      item = JSON.parse(child.stdout)
+    } catch {
+      item = {
+        created: [], rolledBack: [], skipped: [], warnings: [], actions: [],
+        errors: ["No s'ha pogut interpretar el resultat de press" + (child.stderr ? ": " + child.stderr.trim() : "")],
+      }
+    }
+    const created = item.created || []
+    const rolledBack = item.rolledBack || []
+    const skipped = item.skipped || []
+    const warnings = item.warnings || []
+    const errors = item.errors || []
+    const actions = item.actions || []
+    const articleCreated = created.some(item => item.type === "press")
+    const status = errors.length
+      ? "ERROR"
+      : skipped.length
+        ? "SKIPPED"
+        : warnings.length
+          ? "WARNING"
+          : options.dryRun
+            ? "WOULD_CREATE"
+            : articleCreated
+              ? "CREATED"
+              : "ERROR"
+    const normalizedErrors = status === "ERROR" && !errors.length
+      ? ["L'execució no ha creat ni omès l'article de premsa"]
+      : errors
+    report.results.push({ reference: entry.reference, legacyIndex: entry.index, status, warnings, errors: normalizedErrors })
+    report.created.push(...created)
+    report.rolledBack.push(...rolledBack)
+    report.skipped.push(...skipped)
+    report.actions.push(...actions)
+    if (warnings.length) report.warnings.push({ reference: entry.reference, reasons: warnings })
+    if (normalizedErrors.length) report.errors.push({ reference: entry.reference, reasons: normalizedErrors })
+  }
+  const createdReferences = report.created.filter(item => item.type === "press").map(item => item.reference)
+  report.summary = {
+    TOTAL: entries.length,
+    WOULD_CREATE: report.results.filter(item => item.status === "WOULD_CREATE").length,
+    CREATED_ARTICLES: createdReferences.length,
+    SKIPPED: report.results.filter(item => item.status === "SKIPPED").length,
+    WARNINGS: report.results.filter(item => item.status === "WARNING").length,
+    ERRORS: report.results.filter(item => item.status === "ERROR").length,
+    FILES_UPLOADED: report.created.filter(item => item.type === "file").length,
+    FILES_REUSED: report.actions.filter(action => String(action.disposition || "").startsWith("REUSE")).length,
+    FILES_ROLLED_BACK: report.rolledBack.filter(item => item.type === "file").length,
+  }
+  report.createdReferences = createdReferences
+  report.wouldCreateReferences = report.results.filter(item => item.status === "WOULD_CREATE").map(item => item.reference)
+  report.skippedReferences = report.results.filter(item => item.status === "SKIPPED").map(item => item.reference)
+  report.warningReferences = report.results.filter(item => item.status === "WARNING").map(item => ({ reference: item.reference, reasons: item.warnings }))
+  report.errorReferences = report.results.filter(item => item.status === "ERROR").map(item => ({ reference: item.reference, reasons: item.errors }))
   return report
 }
 
@@ -1329,7 +1392,10 @@ if (process.env.MIGRATION_JSON_ONLY === "1") {
     console.log((report.type === "pages" ? "TOTAL MIGRABLE: " : "TOTAL: ") + report.summary.TOTAL)
     if (report.type === "pages") console.log("EXCLUDED: " + report.summary.EXCLUDED)
     if (report.dryRun) console.log("WOULD_CREATE: " + report.summary.WOULD_CREATE)
-    else console.log((report.type === "biography" ? "CREATED EVENTS: " : "CREATED ARTWORKS: ") + (report.summary.CREATED_EVENTS ?? report.summary.CREATED_ARTWORKS))
+    else {
+      const createdLabel = report.type === "biography" ? "CREATED EVENTS: " : report.type === "press" ? "CREATED ARTICLES: " : "CREATED ARTWORKS: "
+      console.log(createdLabel + (report.summary.CREATED_EVENTS ?? report.summary.CREATED_ARTICLES ?? report.summary.CREATED_ARTWORKS))
+    }
     console.log((report.type === "artwork" ? "SKIPPED ARTWORKS: " : "SKIPPED: ") + (report.summary.SKIPPED ?? report.summary.SKIPPED_ARTWORKS))
     console.log("WARNINGS: " + report.summary.WARNINGS)
     console.log("ERRORS: " + report.summary.ERRORS)
