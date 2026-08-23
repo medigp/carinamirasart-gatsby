@@ -33,11 +33,11 @@ module.exports = {
     /*
      * Google Analytics
      *
-     * Només carreguem el plugin quan GOOGLE_ANALYTICS_ID
-     * està definit.
+     * Només carreguem el plugin si hi ha un
+     * GOOGLE_ANALYTICS_ID configurat.
      *
-     * Això permet tenir Analytics a producció i deixar-lo
-     * completament desactivat als entorns de test.
+     * Això permet tenir Analytics a producció
+     * i deixar-lo desactivat a TEST.
      */
     ...(process.env.GOOGLE_ANALYTICS_ID
       ? [
@@ -190,17 +190,31 @@ module.exports = {
       __key: "images"
     },
 
-    {
-      resolve: "gatsby-source-filesystem",
-      options: {
-        name: "content",
-        path: `${__dirname}/content/`,
-        ignore: [
-          '/\\.(?!((gif|jpe?g|tiff?|png|webp|bmp))))$/i'
+    /*
+     * Contingut MDX antic.
+     *
+     * Quan GATSBY_CONTENT_SOURCE=directus,
+     * no intentem carregar /content perquè
+     * les dades venen del CMS.
+     *
+     * Això manté la compatibilitat amb el flux
+     * antic si en algun entorn encara s'utilitza.
+     */
+    ...(process.env.GATSBY_CONTENT_SOURCE !== "directus"
+      ? [
+          {
+            resolve: "gatsby-source-filesystem",
+            options: {
+              name: "content",
+              path: `${__dirname}/content/`,
+              ignore: [
+                '/\\.(?!((gif|jpe?g|tiff?|png|webp|bmp))))$/i'
+              ]
+            },
+            __key: "content"
+          },
         ]
-      },
-      __key: "content"
-    },
+      : []),
 
     {
       resolve: "gatsby-transformer-remark",
