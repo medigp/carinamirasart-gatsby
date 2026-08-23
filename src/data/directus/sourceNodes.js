@@ -154,9 +154,36 @@ const formatLocalizedList = (values, lang) => {
   return result.charAt(0).toLocaleUpperCase(locale) + result.slice(1)
 }
 
+const toInches = value => Math.round((value / 2.54) * 100) / 100
+const dimensionOrder = (left, right) => {
+  const leftSort = Number.isFinite(Number(left?.sort)) ? Number(left.sort) : Number.MAX_SAFE_INTEGER
+  const rightSort = Number.isFinite(Number(right?.sort)) ? Number(right.sort) : Number.MAX_SAFE_INTEGER
+  return leftSort - rightSort || Number(left?.id || 0) - Number(right?.id || 0)
+}
+const artworkSizes = dimensions => array(dimensions)
+  .filter(dimension => dimension?.height_cm !== null && dimension?.height_cm !== undefined
+    && dimension?.width_cm !== null && dimension?.width_cm !== undefined)
+  .sort(dimensionOrder)
+  .map(dimension => {
+    const height = Number(dimension.height_cm)
+    const width = Number(dimension.width_cm)
+    const depth = dimension.depth_cm === null || dimension.depth_cm === undefined
+      ? null
+      : Number(dimension.depth_cm)
+    return {
+      cm: { height, width, breadth: depth },
+      inch: {
+        height: toInches(height),
+        width: toInches(width),
+        breadth: depth === null ? null : toInches(depth),
+      },
+    }
+  })
+
 const ARTWORK_FIELDS = [
   "id", "reference", "sort", "date", "date_created", "date_updated", "show_on_home",
-  "main_image", "other_images.directus_files_id", "seo_image", "height_cm", "width_cm", "depth_cm",
+  "main_image", "other_images.directus_files_id", "seo_image",
+  "dimensions.id", "dimensions.sort", "dimensions.height_cm", "dimensions.width_cm", "dimensions.depth_cm",
   "sale_status", "show_sale_status", "price_eur", "show_price", "quote_author", "show_quote",
   "primary_serie.id", "primary_serie.reference",
   "tags.tags_id.tag", "tags.tags_id.translations.languages_code.language", "tags.tags_id.translations.name",
@@ -350,18 +377,7 @@ exports.sourceDirectusNodes = async helpers => {
       const image = await createImages(item, translation, id, helpers)
       const seo = await createSeo(item, translation, image.main, id, helpers)
       seo._imageNodeId ||= image._mainNodeId
-      const heightCm = Number(item.height_cm)
-      const widthCm = Number(item.width_cm)
-      const depthCm = item.depth_cm === null ? 3.5 : Number(item.depth_cm)
-      const toInches = value => Math.round((value / 2.54) * 100) / 100
-      const sizes = item.height_cm !== null && item.width_cm !== null ? [{
-        cm: { height: heightCm, width: widthCm, breadth: depthCm },
-        inch: {
-          height: toInches(heightCm),
-          width: toInches(widthCm),
-          breadth: toInches(depthCm),
-        },
-      }] : []
+      const sizes = artworkSizes(item.dimensions)
       const node = {
         id,
         lang,

@@ -16,3 +16,6 @@ package-lock.json
 generated-assets/
 local-preview-audit/
 .env.test
+migration/.migration-file-map.json
+migration/.migration-file-map.json.tmp
+migration/.env.migration
