@@ -224,13 +224,17 @@ const Paragraph = styled.div`
     margin: 0;
   }
 
-  div.p-wrapper p{
+  div.p-wrapper > div > p {
+    margin: 0;
+  }
+
+  div.p-wrapper > div{
     padding-left: 3rem;
     margin-top:0;
     transition: all 0.5s ease;
   }
 
-  &:hover div.p-wrapper p{
+  &:hover div.p-wrapper > div{
     transform: translateX(-0.5em);
   } 
 
@@ -277,29 +281,29 @@ const Paragraph = styled.div`
       flex-direction:columnreverse;
     }
 
-    .p-wrapper p,
+    .p-wrapper > div,
     .p-title h3,
     .p-title h4{
       max-width: 80%;
     }
     
-    div.p-wrapper p{
+    div.p-wrapper > div{
       padding:0;
       text-align:left;
     }
 
     &:nth-of-type(2n){
-      div.p-wrapper p{
+      div.p-wrapper > div{
         text-align:right;
       }
     }
     
-    &:hover div.p-wrapper p{
+    &:hover div.p-wrapper > div{
       transform: translateX(-0.5em);
     }
 
     &:nth-of-type(2n){    
-      &:hover div.p-wrapper p{
+      &:hover div.p-wrapper > div{
         transform: translateX(+0.5em);
       }
     }
@@ -344,13 +348,12 @@ const ParagraphH4 = styled.h4`
 `
 
 const ParagraphWrapper = styled.div`
-
+  grid-area : text;
 `
 
 const IconElement = styled.div`
 `
-const ParagraphText = styled.p`
-  grid-area : text;
+const ParagraphText = styled.div`
 `
 
 export default About;
