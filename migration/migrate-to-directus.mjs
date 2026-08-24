@@ -65,7 +65,7 @@ if (seriesSeoImageField?.meta?.options?.folder !== SERIES_ASSET_FOLDER) {
   throw new Error("series.main_image i series.seo_image no comparteixen folder; cal revisar el flux")
 }
 if (artworkDateField?.schema?.data_type !== "timestamp without time zone") {
-  throw new Error("artworks.date ja no Ã©s timestamp without time zone; cal revisar la conversiÃ³")
+  throw new Error("artworks.date ja no és timestamp without time zone; cal revisar la conversió")
 }
 if (seriesDateField?.schema?.data_type !== "timestamp without time zone") {
   throw new Error("series.date ja no és timestamp without time zone; cal revisar la conversió")
@@ -314,7 +314,7 @@ async function findExact(collection, field, value, fields = `id,${field}`) {
     },
   })
   const items = Array.isArray(payload.data) ? payload.data : []
-  if (items.length > 1) throw new Error(`${collection}.${field} no Ã©s Ãºnic per ${value}`)
+  if (items.length > 1) throw new Error(`${collection}.${field} no és únic per ${value}`)
   return items[0] || null
 }
 
@@ -363,7 +363,7 @@ function mdxIncidents(body) {
     [/^\s*(?:import|export)\s/m, "import/export MDX"],
     [/<[A-Z][A-Za-z0-9_.:-]*(?:\s|\/?>)/, "component JSX"],
     [/<\/[A-Z][A-Za-z0-9_.:-]*\s*>/, "component JSX"],
-    [/(^|[^\\])\{[^{}]+\}/m, "expressiÃ³ JSX/MDX"],
+    [/(^|[^\\])\{[^{}]+\}/m, "expressió JSX/MDX"],
   ]
   for (const [expression, label] of checks) if (expression.test(body)) incidents.push(label)
   return [...new Set(incidents)]
@@ -394,7 +394,7 @@ function dimensionsFrom(sizes) {
   return (Array.isArray(sizes) ? sizes : []).map((size, index) => {
     const cm = size?.cm || {}
     if (cm.height === undefined || cm.width === undefined) {
-      throw new Error(`sizes[${index}] no contÃ© cm.height i cm.width`)
+      throw new Error(`sizes[${index}] no conté cm.height i cm.width`)
     }
     const dimension = { sort: index + 1, height_cm: Number(cm.height), width_cm: Number(cm.width) }
     const depth = cm.depth ?? cm.breadth
@@ -1288,7 +1288,7 @@ async function run() {
     }
 
     const serieLegacy = data.classification?.serie
-    if (!serieLegacy) throw new Error("classification.serie Ã©s obligatori per resoldre primary_serie")
+    if (!serieLegacy) throw new Error("classification.serie és obligatori per resoldre primary_serie")
     const serieReference = String(serieLegacy).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
     const resolved = {
       serie: null,
@@ -1306,7 +1306,7 @@ async function run() {
     resolved.languageCode = catalan.code
 
     const mainRelative = data.image?.main
-    if (!mainRelative) throw new Error("image.main Ã©s obligatori")
+    if (!mainRelative) throw new Error("image.main és obligatori")
     const mainFilename = path.resolve(path.dirname(filename), mainRelative)
     if (!fs.existsSync(mainFilename)) throw new Error(`No existeix image.main: ${mainRelative}`)
     const mainImageId = await uploadFile(
