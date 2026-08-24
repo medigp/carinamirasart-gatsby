@@ -170,6 +170,7 @@ exports.createSchemaCustomization = ({ actions }) => {
             sortText : String
             image : File
             author : String
+            media : String
             authorTitle : String
             date: Date @dateformat
             link : String
@@ -736,6 +737,8 @@ const getParagraphObject = (paragraph, index) => {
         return null;
     //console.log("paragraph", paragraph);
     let p = paragraph;
+    if(p.media === undefined && p.author !== undefined)
+        p.media = p.author
     if(!p.sortText){
         let indexText = String(index).padStart(4,'0')
         p.sortText =`sort-${indexText}`

@@ -72,7 +72,7 @@ const Press = ({data}) => {
       if(!paragraph)
         return "";
 
-      const {text, author, title, link, date, image : pimage} = paragraph
+      const {text, media, title, link, date, image : pimage} = paragraph
       if(!title)
         return "";
 
@@ -96,9 +96,9 @@ const Press = ({data}) => {
               dangerouslySetInnerHTML={{__html:text}}
             ></PressText>
             }
-            {author && 
+            {media &&
               <PressAuthor
-                dangerouslySetInnerHTML={{__html:author}}
+                dangerouslySetInnerHTML={{__html:media}}
               ></PressAuthor>
             }
             {dateTxt && 
@@ -210,7 +210,7 @@ query {
       date,
       title,
       text,
-      author,
+      media,
       link,
       sortText
     }

@@ -233,7 +233,8 @@ const PAGE_FIELDS = [
 ]
 
 const PRESS_FIELDS = [
-  "id", "reference", "sort", "reference_date", "date_created", "date_updated", "author",
+  "id", "reference", "sort", "reference_date", "date_created", "date_updated",
+  "press_media.name",
   "external_url", "image", "translations.languages_code.language", "translations.title",
   "translations.subtitle", "translations.description", "translations.external_url",
   "translations.image_alt_text",
@@ -277,6 +278,13 @@ exports.sourceDirectusNodes = async helpers => {
   helpers.reporter.info(`[Directus] ${biographyEvents.length} esdeveniments biogràfics publicats`)
   helpers.reporter.info(`[Directus] generant ${languages.join("/")}`)
 
+  const articlesWithoutMedia = pressArticles.filter(article => !article.press_media?.name)
+  if (articlesWithoutMedia.length) {
+    helpers.reporter.panicOnBuild(
+      `[Directus] Articles de premsa sense press_media.name: ${articlesWithoutMedia.map(article => article.reference).join(", ")}`
+    )
+  }
+
   for (const item of pages) {
     for (const lang of languages) {
       const translation = selectTranslation(item.translations, lang)
@@ -296,7 +304,7 @@ exports.sourceDirectusNodes = async helpers => {
             title: text.title || article.reference,
             subtitle: text.subtitle,
             text: text.description,
-            author: article.author,
+            media: article.press_media.name,
             link: text.external_url || article.external_url,
             sortText: `${date}-sort-${chronologySort}`,
           }
