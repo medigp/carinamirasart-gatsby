@@ -35,16 +35,7 @@ const configuredLanguages = () => {
   return [...new Set(requested)]
 }
 
-const basicAuthorization = () => {
-  const credentials = `${process.env.DIRECTUS_BASIC_AUTH_USER}:${process.env.DIRECTUS_BASIC_AUTH_PASSWORD}`
-  return `Basic ${Buffer.from(credentials).toString("base64")}`
-}
-
-const withDirectusToken = input => {
-  const url = new URL(input)
-  if (process.env.DIRECTUS_TOKEN) url.searchParams.set("access_token", process.env.DIRECTUS_TOKEN)
-  return url.toString()
-}
+const directusAuthorization = () => `Bearer ${process.env.DIRECTUS_TOKEN}`
 
 const fetchCollection = async (collection, fields, reporter) => {
   const url = new URL(`${trimTrailingSlash(process.env.DIRECTUS_URL)}/items/${collection}`)
@@ -54,8 +45,8 @@ const fetchCollection = async (collection, fields, reporter) => {
 
   let response
   try {
-    response = await fetch(withDirectusToken(url), {
-      headers: { Authorization: basicAuthorization(), Accept: "application/json" },
+    response = await fetch(url, {
+      headers: { Authorization: directusAuthorization(), Accept: "application/json" },
     })
   } catch (error) {
     reporter.panicOnBuild(`[Directus] No s'ha pogut connectar a ${collection}: ${error.message}`)
@@ -74,8 +65,8 @@ const downloadFile = async (fileValue, parentNodeId, helpers) => {
   if (!fileId) return null
   try {
     return await createRemoteFileNode({
-      url: withDirectusToken(`${trimTrailingSlash(process.env.DIRECTUS_URL)}/assets/${fileId}`),
-      httpHeaders: { Authorization: basicAuthorization() },
+      url: `${trimTrailingSlash(process.env.DIRECTUS_URL)}/assets/${fileId}`,
+      httpHeaders: { Authorization: directusAuthorization() },
       parentNodeId,
       createNode: helpers.actions.createNode,
       createNodeId: helpers.createNodeId,
@@ -248,9 +239,7 @@ const BIOGRAPHY_FIELDS = [
 ]
 
 exports.sourceDirectusNodes = async helpers => {
-  const requiredVariables = [
-    "DIRECTUS_URL", "DIRECTUS_BASIC_AUTH_USER", "DIRECTUS_BASIC_AUTH_PASSWORD", "DIRECTUS_TOKEN",
-  ]
+  const requiredVariables = ["DIRECTUS_URL", "DIRECTUS_TOKEN"]
   const missingVariables = requiredVariables.filter(name => !process.env[name])
   if (missingVariables.length) {
     helpers.reporter.panicOnBuild(`[Directus] Falten variables d'entorn: ${missingVariables.join(", ")}`)

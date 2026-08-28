@@ -269,8 +269,6 @@ function requiredEnvironment() {
   const names = [
     "DIRECTUS_URL",
     "DIRECTUS_MIGRATION_TOKEN",
-    "DIRECTUS_BASIC_AUTH_USER",
-    "DIRECTUS_BASIC_AUTH_PASSWORD",
   ]
   const missing = names.filter(name => !process.env[name])
   if (missing.length) throw new Error(`Falten variables d'entorn: ${missing.join(", ")}`)
@@ -278,16 +276,12 @@ function requiredEnvironment() {
 
 function directusUrl(relativePath, query = {}) {
   const url = new URL(relativePath, `${process.env.DIRECTUS_URL.replace(/\/$/, "")}/`)
-  url.searchParams.set("access_token", process.env.DIRECTUS_MIGRATION_TOKEN)
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, String(value))
   return url
 }
 
 function requestHeaders(extra = {}) {
-  const credentials = Buffer.from(
-    `${process.env.DIRECTUS_BASIC_AUTH_USER}:${process.env.DIRECTUS_BASIC_AUTH_PASSWORD}`
-  ).toString("base64")
-  return { Authorization: `Basic ${credentials}`, Accept: "application/json", ...extra }
+  return { Authorization: `Bearer ${process.env.DIRECTUS_MIGRATION_TOKEN}`, Accept: "application/json", ...extra }
 }
 
 async function directusRequest(relativePath, { method = "GET", query, body, headers } = {}) {
